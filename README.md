@@ -24,13 +24,31 @@ Una aplicación web completa para calcular y gestionar inversiones inmobiliarias
 ## 🛠️ Instalación y Uso
 
 ### Requisitos
+- Node.js 20.20.0+ y npm
 - Navegador web moderno (Chrome, Firefox, Safari, Edge)
-- Conexión a internet (para cargar Bootstrap y Chart.js desde CDN)
+- Conexión a internet (para cargar Bootstrap y librerías desde CDN)
 
 ### Instalación
 1. Descarga o clona este repositorio
-2. Abre el archivo `index.html` en tu navegador web
-3. ¡Listo para usar!
+2. Instala dependencias:
+   ```bash
+   npm install
+   ```
+3. Inicia el entorno de desarrollo con Vite:
+   ```bash
+   npm run dev
+   ```
+4. Abre la URL que muestra Vite (normalmente `http://localhost:5173`)
+
+### Build de producción
+```bash
+npm run build
+```
+
+### Previsualizar build
+```bash
+npm run preview
+```
 
 ### Uso Rápido
 
