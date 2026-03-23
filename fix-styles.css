@@ -1,0 +1,58 @@
+/* FORZAR ESTILOS CORRECTOS - ADMIN360 */
+
+/* Tabla de Deals */
+.table-dark {
+    background: #1a1f2e !important;
+    color: #ffffff !important;
+}
+
+.table-dark th {
+    background: #0a0e14 !important;
+    color: #d4af37 !important;
+    font-weight: 700;
+    border: 1px solid #d4af37 !important;
+}
+
+.table-dark td {
+    color: #ffffff !important;
+    border-top: 1px solid rgba(212, 175, 55, 0.2) !important;
+}
+
+/* Colores de texto */
+.text-gold { color: #d4af37 !important; font-weight: bold; }
+.text-success-gold { color: #28a745 !important; font-weight: bold; }
+.text-warning-gold { color: #ffc107 !important; font-weight: bold; }
+.text-danger-gold { color: #dc3545 !important; font-weight: bold; }
+
+/* Botones */
+.btn-info { background: #17a2b8 !important; border-color: #17a2b8 !important; color: white !important; }
+.btn-primary { background: #007bff !important; border-color: #007bff !important; color: white !important; }
+.btn-success { background: #28a745 !important; border-color: #28a745 !important; color: white !important; }
+.btn-danger { background: #dc3545 !important; border-color: #dc3545 !important; color: white !important; }
+
+/* Modal */
+.modal-content { background: #1a1f2e !important; }
+.modal-header { background: #007bff !important; color: white !important; }
+.modal-body { background: #1a1f2e !important; color: white !important; }
+
+/* Forzar datos en negro en modal */
+.modal-body .calculated-value { color: #000000 !important; font-weight: bold; background: rgba(212, 175, 55, 0.1) !important; padding: 4px; border-radius: 4px; }
+.modal-body .result-value { color: #000000 !important; font-weight: bold; background: rgba(212, 175, 55, 0.1) !important; padding: 4px; border-radius: 4px; }
+.modal-body .result-positive { color: #000000 !important; font-weight: bold; background: rgba(40, 167, 69, 0.1) !important; padding: 4px; border-radius: 4px; }
+.modal-body .result-negative { color: #000000 !important; font-weight: bold; background: rgba(220, 53, 69, 0.1) !important; padding: 4px; border-radius: 4px; }
+.modal-body .roi-high { color: #000000 !important; font-weight: bold; background: rgba(40, 167, 69, 0.1) !important; padding: 4px; border-radius: 4px; }
+.modal-body .roi-medium { color: #000000 !important; font-weight: bold; background: rgba(255, 193, 7, 0.1) !important; padding: 4px; border-radius: 4px; }
+.modal-body .roi-low { color: #000000 !important; font-weight: bold; background: rgba(220, 53, 69, 0.1) !important; padding: 4px; border-radius: 4px; }
+
+/* Labels en modal */
+.modal-body table strong { color: #d4af37 !important; }
+.modal-body table td { color: white !important; }
+
+/* Headers */
+.text-primary { color: #007bff !important; }
+.text-success { color: #28a745 !important; }
+.text-warning { color: #ffc107 !important; }
+.text-danger { color: #dc3545 !important; }
+
+/* Badges */
+.badge { color: white !important; }

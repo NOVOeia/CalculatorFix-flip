@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADMIN360 - Calculadora de Inversiones Fix & Flip</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <link href="fix-styles.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <img src="assets/admin360-logo.png" alt="ADMIN360 Logo" class="logo me-2" style="height: 40px;">
+                <span>ADMIN360</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showSection('home')">
+                            <i class="bi bi-house-door-fill"></i> Inicio
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showSection('calculator')">
+                            <i class="bi bi-calculator-fill"></i> Calculadora
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showSection('projects')">
+                            <i class="bi bi-folder-fill"></i> Deals
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Hero Section with Logo -->
+        <div id="hero-wrapper" class="row mb-5">
+            <div class="col-12 text-center">
+                <div class="hero-section">
+                    <img src="assets/admin360-logo.png" alt="ADMIN360 Logo" class="hero-logo mb-4"
+                        style="height: 120px;">
+                    <h1 class="display-4 text-white mb-3">ADMIN360</h1>
+                    <p class="lead text-gold mb-4">Calculadora de Inversiones Fix & Flip</p>
+                    <div class="hero-stats d-flex justify-content-center gap-4">
+                        <div class="stat-item">
+                            <div class="stat-number">20%+</div>
+                            <div class="stat-label">ROI Promedio</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">100+</div>
+                            <div class="stat-label">Deals</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">24/7</div>
+                            <div class="stat-label">Disponibilidad</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Section -->
+        <div id="home-section" class="content-section">
+            <div class="section-header-premium text-center">
+                <span class="section-subtitle">Panel de Control</span>
+                <h2 class="section-title-main">Bienvenido a ADMIN360</h2>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="dashboard-card glass-panel" onclick="showSection('calculator')">
+                    <i class="bi bi-calculator-fill"></i>
+                    <h3>Calculadora</h3>
+                    <p>Análisis detallado de inversión Fix & Flip</p>
+                </div>
+                <div class="dashboard-card glass-panel" onclick="showSection('projects')">
+                    <i class="bi bi-folder-fill"></i>
+                    <h3>Deals</h3>
+                    <p>Gestión y seguimiento de tus propiedades</p>
+                </div>
+                <div class="dashboard-card glass-panel" onclick="showSection('manager')">
+                    <i class="bi bi-person-workspace"></i>
+                    <h3>Project Manager</h3>
+                    <p>Control y ejecución de obras en tiempo real</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calculator Section -->
+        <div id="calculator-section" class="content-section" style="display: none;">
+            <div class="section-header-premium">
+                <span class="section-subtitle">Paso 1: Análisis</span>
+                <h2 class="section-title-main">Calculadora Fix & Flip</h2>
+            </div>
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card glass-panel">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-calculator-fill me-2"></i>Fix & Flip Underwriting Calculator</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="investment-form" class="underwriting-form">
+                                <!-- Property Info Block -->
+                                <div class="block-section">
+                                    <h6 class="block-title"><i class="bi bi-house-fill"></i> Property Info</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Property Address</label>
+                                                <input type="text" class="form-control editable" id="property-address"
+                                                    placeholder="Enter property address">
+                                                <small class="form-text text-muted">Dirección completa de la propiedad a
+                                                    analizar</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Project Profit Block -->
+                                <div class="block-section">
+                                    <h6 class="block-title"><i class="bi bi-graph-up-arrow"></i> Project Profit</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Project Months</label>
+                                                <input type="number" class="form-control editable" id="project-months"
+                                                    value="0" step="1">
+                                                <small class="form-text text-muted">Duración estimada del proyecto en
+                                                    meses</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">ARV</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable" id="arv"
+                                                        value="0" step="1000">
+                                                </div>
+                                                <small class="form-text text-muted">After Repair Value - Valor después
+                                                    de reparaciones</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Profit Min %</label>
+                                                <div class="input-group">
+                                                    <input type="number" class="form-control editable"
+                                                        id="profit-min-percent" value="0" step="1">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="form-text text-muted">Porcentaje mínimo de ganancia
+                                                    deseado</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Ganancia mínima deseada</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable"
+                                                        id="profit-min-amount" value="0" step="1000">
+                                                </div>
+                                                <small class="form-text text-muted">Monto mínimo de ganancia
+                                                    deseada</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Project Costs Block -->
+                                <div class="block-section">
+                                    <h6 class="block-title"><i class="bi bi-cash-stack"></i> Project Costs</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Purchase Price</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable"
+                                                        id="purchase-price" value="0" step="1000">
+                                                </div>
+                                                <small class="form-text text-muted">Precio de compra de la
+                                                    propiedad</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Rehab Budget</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable" id="rehab-budget"
+                                                        value="0" step="1000">
+                                                </div>
+                                                <small class="form-text text-muted">Presupuesto de renovación</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Closing Costs</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable"
+                                                        id="closing-costs" value="0" step="100">
+                                                </div>
+                                                <small class="form-text text-muted">Costos de cierre</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Holding Costs (mensual)</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable"
+                                                        id="holding-costs" value="0" step="100">
+                                                </div>
+                                                <small class="form-text text-muted">Costos de mantenimiento por mes (se
+                                                    multiplicará por Project Months)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <div class="calculated-field">
+                                                <label class="form-label">Total Project Costs</label>
+                                                <div class="calculated-value" id="total-project-costs">$0</div>
+                                                <small class="form-text text-muted">Suma total de costos del
+                                                    proyecto</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- HML Financing Block -->
+                                <div class="block-section">
+                                    <h6 class="block-title"><i class="bi bi-bank"></i> HML Financing</h6>
+
+                                    <!-- Financing Terms Section -->
+                                    <div class="row mb-4">
+                                        <div class="col-12">
+                                            <h6 class="text-gold mb-3"
+                                                style="color: var(--accent-gold) !important; font-weight: 700;">
+                                                Financing Terms</h6>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 mb-4">
+                                        <!-- Primero: Down Payment y % -->
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Down Payment</label>
+                                                <div class="input-group mb-2">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable"
+                                                        id="down-payment-amount" value="0" step="1000" placeholder="0">
+                                                </div>
+                                                <small class="form-text text-muted">Monto del Down Payment (se calculará
+                                                    el % automáticamente)</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">% Down Payment</label>
+                                                <div class="input-group mb-2">
+                                                    <input type="number" class="form-control editable"
+                                                        id="down-payment-percent" value="0" step="1" placeholder="0">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="form-text text-muted">Porcentaje del Down Payment sobre
+                                                    Purchase Price</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Segundo: HML Loan Amount y % -->
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">HML Loan Amount</label>
+                                                <div class="input-group mb-2">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable"
+                                                        id="hml-loan-amount" value="0" step="1000" placeholder="0">
+                                                </div>
+                                                <small class="form-text text-muted">Monto del préstamo Hard
+                                                    Money</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">% HML Loan</label>
+                                                <div class="input-group mb-2">
+                                                    <input type="number" class="form-control editable"
+                                                        id="hml-loan-percent" value="0" step="1" placeholder="0">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="form-text text-muted">Porcentaje del préstamo sobre
+                                                    Purchase Price</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Luego: resto de campos de financiamiento -->
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">HML Points %</label>
+                                                <div class="input-group mb-2">
+                                                    <input type="number" class="form-control editable"
+                                                        id="hml-points-rate" value="0" step="0.5" placeholder="0">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="form-text text-muted">Puntos del préstamo HML</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">HML Interest Rate</label>
+                                                <div class="input-group mb-2">
+                                                    <input type="number" class="form-control editable"
+                                                        id="hml-interest-rate" value="0" step="0.5" placeholder="0">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="form-text text-muted">Tasa de interés anual</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Interest Type</label>
+                                                <select class="form-select editable mb-2" id="interest-type"
+                                                    style="background: rgba(212, 175, 55, 0.1) !important; border: 2px solid rgba(212, 175, 55, 0.3) !important; color: #ffffff !important;">
+                                                    <option value="monthly"
+                                                        style="background: #2c3035; color: #ffffff;">Monthly</option>
+                                                    <option value="annual" style="background: #2c3035; color: #ffffff;">
+                                                        Annual</option>
+                                                </select>
+                                                <small class="form-text text-muted">Tipo de cálculo de interés</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">HML Admin Fees</label>
+                                                <div class="input-group mb-2">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable"
+                                                        id="hml-admin-fees" value="0" step="100" placeholder="0">
+                                                </div>
+                                                <small class="form-text text-muted">Fees administrativos HML</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Campo informativo -->
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label class="form-label">HML LTV (ARV)</label>
+                                                <div class="calculated-value" id="hml-ltv-display">0%</div>
+                                                <small class="form-text text-muted">Loan-to-Value basado en ARV (HML
+                                                    Loan ÷ ARV × 100)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Calculated Costs Section -->
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h6 class="text-success mb-3">Calculated Costs</h6>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="calculated-field">
+                                                <label class="form-label">HML Total Interest</label>
+                                                <div class="calculated-value" id="hml-total-interest">$0</div>
+                                                <small class="form-text text-muted">Intereses totales del
+                                                    préstamo</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="calculated-field">
+                                                <label class="form-label">HML Total Fees</label>
+                                                <div class="calculated-value" id="hml-total-fees">$0</div>
+                                                <small class="form-text text-muted">Total de fees del préstamo (puntos +
+                                                    intereses + admin)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- GAP Financing Block -->
+
+
+                                <!-- Selling Costs Block -->
+                                <div class="block-section">
+                                    <h6 class="block-title"><i class="bi bi-cart3"></i> Selling Costs</h6>
+
+                                    <!-- Input Fields -->
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">RE Commissions %</label>
+                                                <div class="input-group">
+                                                    <input type="number" class="form-control editable"
+                                                        id="re-commissions" value="0" step="0.5">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="form-text text-muted">Comisiones de agente
+                                                    inmobiliario</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label class="form-label editable-field">Resale Closing Costs</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">$</span>
+                                                    <input type="number" class="form-control editable"
+                                                        id="resale-closing-costs" value="0" step="100">
+                                                </div>
+                                                <small class="form-text text-muted">Costos de cierre al vender</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Calculated Costs Section -->
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <h6 class="text-success mb-3">Calculated Costs</h6>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <div class="calculated-field">
+                                                <label class="form-label">Resale Commissions</label>
+                                                <div class="calculated-value" id="resale-commissions">$0</div>
+                                                <small class="form-text text-muted">Comisiones calculadas (ARV ×
+                                                    %)</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="calculated-field">
+                                                <label class="form-label">Total Selling Costs</label>
+                                                <div class="calculated-value" id="total-selling-costs">$0</div>
+                                                <small class="form-text text-muted">Total costos de venta (comisiones +
+                                                    cierre)</small>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <div class="calculated-field">
+                                                <label class="form-label">Net Sale Price</label>
+                                                <div class="calculated-value" id="net-sale-price">$0</div>
+                                                <small class="form-text text-muted">Precio neto de venta (ARV -
+                                                    costos)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Total Analysis Block -->
+                                <div class="block-section">
+                                    <h6 class="block-title"><i class="bi bi-graph-up"></i> Total Analysis</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <div class="calculated-field">
+                                                <label class="form-label">TPC + Cost</label>
+                                                <div class="calculated-value" id="tpc-plus-cost">$0</div>
+                                                <small class="form-text text-muted">Total Project Cost + Financing
+                                                    Costs</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="calculated-field">
+                                                <label class="form-label">As % of ARV</label>
+                                                <div class="calculated-value" id="as-percent-of-arv">0.0%</div>
+                                                <small class="form-text text-muted">Porcentaje del ARV</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="calculated-field">
+                                                <label class="form-label">Total Capital Needed</label>
+                                                <div class="calculated-value" id="total-capital-needed">$0</div>
+                                                <small class="form-text text-muted">Capital total necesario</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="calculated-field">
+                                                <label class="form-label">Capital Required</label>
+                                                <div class="calculated-value" id="capital-required">$0</div>
+                                                <small class="form-text text-muted">Capital requerido inicial</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <div class="calculated-field">
+                                                <label class="form-label">Projection</label>
+                                                <div class="calculated-value" id="projection">$0</div>
+                                                <small class="form-text text-muted">Proyección de ganancia neta</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <div class="deal-decision" id="deal-decision">
+                                                NO DEAL
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="text-center mt-4">
+                                    <button type="button" class="btn btn-warning btn-lg"
+                                        onclick="calculateUnderwriting()">
+                                        <i class="bi bi-calculator-fill"></i> Calculate Now
+                                    </button>
+                                    <button type="button" class="btn btn-success btn-lg ms-2" onclick="saveProject()">
+                                        <i class="bi bi-save-fill"></i> Save Deal
+                                    </button>
+                                    <button type="button" class="btn btn-primary btn-lg ms-2"
+                                        onclick="resetCalculator()">
+                                        <i class="bi bi-arrow-clockwise"></i> Reset
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Results Panel -->
+                <div class="col-lg-4">
+                    <div class="card glass-panel sticky-top">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-lightning-fill me-2"></i>Live Results</h5>
+                        </div>
+                        <div class="card-body" id="results-section">
+                            <div class="result-item">
+                                <div class="result-label">Total Investment</div>
+                                <div class="result-value" id="result-total-investment">$0</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">Projected Profit</div>
+                                <div class="result-value" id="result-profit">$0</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">ROI</div>
+                                <div class="result-value" id="result-roi">0.0%</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">Cash on Cash</div>
+                                <div class="result-value" id="result-coc">0.0%</div>
+                            </div>
+                            <div class="result-item">
+                                <div class="result-label">Deal Status</div>
+                                <div class="result-value" id="result-deal-status">❌ NO DEAL</div>
+                            </div>
+                            <div class="alert alert-custom mt-3" id="result-recommendation">
+                                <strong>Recomendación:</strong> <span id="recommendation-text">Ingresa los datos del
+                                    proyecto para evaluar viabilidad.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scenarios Table -->
+            <div class="row mt-5">
+                <div class="col-12">
+                    <div class="card glass-panel">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="bi bi-table me-2"></i>ROI Scenarios</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-dark table-striped"
+                                    style="background: var(--card-dark) !important;">
+                                    <thead>
+                                        <tr>
+                                            <th style="color: var(--accent-gold) !important; font-weight: 700;">Scenario
+                                            </th>
+                                            <th style="color: var(--accent-gold) !important; font-weight: 700;">ARV</th>
+                                            <th style="color: var(--accent-gold) !important; font-weight: 700;">Net Sale
+                                                Price</th>
+                                            <th style="color: var(--accent-gold) !important; font-weight: 700;">Profit
+                                            </th>
+                                            <th style="color: var(--accent-gold) !important; font-weight: 700;">ROI</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="scenarios-tbody">
+                                        <!-- Scenarios will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="projects-section" class="content-section" style="display: none;">
+            <div class="section-header-premium">
+                <span class="section-subtitle">Paso 2: Inventario</span>
+                <h2 class="section-title-main">Mis Deals</h2>
+            </div>
+            <div class="card glass-panel">
+                <div class="card-body">
+                    <h4 class="text-gold mb-4"><i class="bi bi-folder-fill me-2"></i>Lista de Deals</h4>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped" style="background: var(--card-dark) !important;">
+                            <thead>
+                                <tr>
+                                    <th style="color: var(--accent-gold) !important; font-weight: 700;">Proyecto</th>
+                                    <th style="color: var(--accent-gold) !important; font-weight: 700;">Dirección</th>
+                                    <th style="color: var(--accent-gold) !important; font-weight: 700;">Inversión Total
+                                    </th>
+                                    <th style="color: var(--accent-gold) !important; font-weight: 700;">ROI</th>
+                                    <th style="color: var(--accent-gold) !important; font-weight: 700;">Ganancia Neta
+                                    </th>
+                                    <th style="color: var(--accent-gold) !important; font-weight: 700;">Estado</th>
+                                    <th style="color: var(--accent-gold) !important; font-weight: 700;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projects-tbody">
+                                <!-- Projects will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Projects Reports Section -->
+        <div id="projects-reports-section" class="content-section" style="display: none;">
+            <div class="card glass-panel">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="text-gold mb-0" style="display: none;"><i class="bi bi-file-earmark-text me-2"></i>Reportes de Deals</h4>
+                        <button class="btn btn-outline-warning btn-sm" onclick="backToProjects()">
+                            <i class="bi bi-arrow-left"></i> Volver a Deals
+                        </button>
+                    </div>     <div class="card-body" id="project-report-content">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-file-text" style="font-size: 3rem;"></i>
+                        <p class="mt-3">Selecciona un proyecto para ver su reporte detallado</p>
+                    </div>
+                </div>
+        <!-- Project Manager Placeholder Section -->
+        <div id="manager-section" class="content-section" style="display: none;">
+            <div class="section-header-premium">
+                <span class="section-subtitle">Paso 3: Ejecución</span>
+                <h2 class="section-title-main">Project Manager</h2>
+            </div>
+            <div class="card glass-panel">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-tools text-gold mb-4" style="font-size: 4rem;"></i>
+                    <h3 class="text-white mb-3">Módulo de Gestión de Proyectos</h3>
+                    <p class="text-muted mb-4">Estamos construyendo la herramienta definitiva para el seguimiento de tus obras. Próximamente podrás gestionar contratistas, presupuestos de obra y cronogramas.</p>
+                    <button class="btn btn-warning" onclick="showSection('home')">Volver al Inicio</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-5 py-4">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <img src="assets/admin360-logo.png" alt="ADMIN360 Logo" class="footer-logo me-3"
+                            style="height: 35px;">
+                        <div>
+                            <h5 class="text-white mb-0">ADMIN360</h5>
+                            <p class="text-gold mb-0">Calculadora de Inversiones Fix & Flip</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="text-white mb-0">© 2024 ADMIN360. Todos los derechos reservados.</p>
+                    <p class="text-gold mb-0">Powered by Advanced Analytics</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
