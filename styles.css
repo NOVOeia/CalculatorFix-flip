@@ -1,4 +1,4 @@
-/* ADMIN360 Fix & Flip Calculator - Dynamic Professional Theme */
+/* Fix & Flip Calculator - Dynamic Professional Theme */
 
 /* CSS Variables */
 :root {
@@ -1231,4 +1231,38 @@ h6 {
     .dashboard-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Fix & Flip Brand Styling */
+.navbar-brand {
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+}
+
+.navbar-brand .small {
+    font-size: 0.75rem !important;
+    font-weight: 400 !important;
+    opacity: 0.9;
+}
+
+.navbar-brand img.logo {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Hero Logo Styling */
+.hero-logo {
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease;
+}
+
+.hero-logo:hover {
+    transform: scale(1.05);
+}
+
+/* Footer Logo Styling */
+.footer-logo {
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
