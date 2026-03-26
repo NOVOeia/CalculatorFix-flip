@@ -1,6 +1,6 @@
 /* FORZAR ESTILOS CORRECTOS - Fix & Flip */
 
-/* Termómetro de Evaluación de Deals */
+/* Medidor semicircular (evaluación del deal) */
 .deal-evaluator {
     background: linear-gradient(135deg, #1a1f2e 0%, #2c3035 100%);
     border: 2px solid rgba(212, 175, 55, 0.3);
@@ -15,78 +15,80 @@
     font-size: 1.4rem;
     font-weight: 700;
     color: #d4af37;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
-.thermometer-container {
+.deal-gauge-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 25px;
-    gap: 20px;
+    justify-content: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
 }
 
-.thermometer-scale {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+.deal-gauge-visual {
+    flex: 1 1 220px;
+    max-width: 320px;
+    min-width: 200px;
 }
 
-.scale-marker {
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 5px 10px;
-    border-radius: 20px;
-    text-align: center;
-    min-width: 80px;
-    transition: all 0.3s ease;
-}
-
-.scale-marker.excellent { background: linear-gradient(45deg, #28a745, #20c997); color: white; }
-.scale-marker.good { background: linear-gradient(45deg, #17a2b8, #007bff); color: white; }
-.scale-marker.fair { background: linear-gradient(45deg, #ffc107, #fd7e14); color: white; }
-.scale-marker.poor { background: linear-gradient(45deg, #dc3545, #e83e8c); color: white; }
-
-.thermometer-body {
-    width: 60px;
-    height: 200px;
-    background: linear-gradient(to top, #2c3035, #495057);
-    border: 3px solid #d4af37;
-    border-radius: 30px;
-    position: relative;
-    overflow: hidden;
-    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.thermometer-fill {
-    position: absolute;
-    bottom: 0;
+.deal-gauge-svg {
+    display: block;
     width: 100%;
-    background: linear-gradient(to top, #dc3545, #ffc107, #28a745);
-    border-radius: 27px;
-    transition: height 1.5s cubic-bezier(0.4, 0, 0.2, 1);
-    height: 0%;
+    height: auto;
+    max-height: 200px;
+    overflow: visible;
 }
 
-.thermometer-bulb {
-    position: absolute;
-    bottom: -15px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 80px;
-    background: radial-gradient(circle, #d4af37, #b8941f);
-    border-radius: 50%;
-    border: 4px solid #2c3035;
-    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
-    animation: pulse 2s infinite;
+.gauge-wedge {
+    stroke: rgba(10, 14, 20, 0.35);
+    stroke-width: 1;
+    transition: opacity 0.35s ease, filter 0.35s ease;
 }
 
-@keyframes pulse {
-    0%, 100% { transform: translateX(-50%) scale(1); }
-    50% { transform: translateX(-50%) scale(1.05); }
+.gauge-wedge--dim {
+    opacity: 0.32;
+    filter: saturate(0.65);
+}
+
+.deal-evaluator--empty .gauge-wedge {
+    opacity: 0.55;
+}
+
+.gauge-needle {
+    stroke: #1a2744;
+    stroke-width: 4;
+}
+
+.gauge-hub {
+    fill: #1a2744;
+    stroke: #d4af37;
+    stroke-width: 2.5;
+}
+
+.gauge-needle-rot {
+    transform-origin: 0 0;
+    transition: transform 0.85s cubic-bezier(0.34, 1.22, 0.64, 1);
+}
+
+.gauge-scale-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    padding: 0 2px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #adb5bd;
+    text-transform: uppercase;
+}
+
+.gauge-scale-labels span {
+    flex: 1;
+    text-align: center;
 }
 
 .evaluator-score {
@@ -94,8 +96,9 @@
     background: rgba(212, 175, 55, 0.1);
     border: 2px solid rgba(212, 175, 55, 0.3);
     border-radius: 15px;
-    padding: 15px;
+    padding: 15px 18px;
     min-width: 120px;
+    flex: 0 0 auto;
 }
 
 .score-value {
@@ -111,6 +114,15 @@
     margin-top: 5px;
     text-transform: uppercase;
     letter-spacing: 1px;
+}
+
+.evaluator-level {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #f1d592;
+    margin-top: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .evaluator-details {
@@ -169,16 +181,83 @@
     line-height: 1.4;
 }
 
-/* Estados del Termómetro */
-.thermometer-fill.excellent { height: 85% !important; }
-.thermometer-fill.good { height: 65% !important; }
-.thermometer-fill.fair { height: 45% !important; }
-.thermometer-fill.poor { height: 25% !important; }
+@media (max-width: 768px) {
+    .deal-evaluator {
+        padding: 16px;
+        margin: 12px 0;
+    }
 
-.thermometer-bulb.excellent { background: radial-gradient(circle, #28a745, #20c997); }
-.thermometer-bulb.good { background: radial-gradient(circle, #17a2b8, #007bff); }
-.thermometer-bulb.fair { background: radial-gradient(circle, #ffc107, #fd7e14); }
-.thermometer-bulb.poor { background: radial-gradient(circle, #dc3545, #e83e8c); }
+    .evaluator-title {
+        font-size: 1.1rem;
+        margin-bottom: 12px;
+    }
+
+    .deal-gauge-row {
+        gap: 0.9rem;
+        margin-bottom: 14px;
+    }
+
+    .deal-gauge-visual {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .deal-gauge-svg {
+        max-height: 170px;
+    }
+
+    .gauge-scale-labels {
+        font-size: 0.6rem;
+    }
+
+    .evaluator-score {
+        width: 100%;
+        min-width: 0;
+        padding: 12px;
+    }
+
+    .score-value {
+        font-size: 2rem;
+    }
+
+    .evaluator-details {
+        flex-direction: column;
+        gap: 10px;
+        margin: 12px 0;
+        padding: 14px;
+    }
+
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .detail-label {
+        margin-bottom: 0;
+    }
+
+    .recommendation-icon {
+        font-size: 1.8rem;
+        margin-bottom: 6px;
+    }
+
+    .recommendation-text {
+        font-size: 0.98rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .deal-gauge-svg {
+        max-height: 150px;
+    }
+
+    .score-label,
+    .evaluator-level {
+        font-size: 0.72rem;
+    }
+}
 
 /* Tabla de Deals */
 .table-dark {

@@ -7,6 +7,509 @@ let lastModifiedField = null;
 let editingProjectId = null;
 let editingItemId = null; // Track which item is being edited
 let calculationTimeout = null; // For debounce
+let suppressRouteSync = false;
+
+const ROUTE_SECTIONS = new Set(['home', 'calculator', 'projects']);
+let currentLanguage = localStorage.getItem('fixFlipLanguage') || 'es';
+
+const I18N = {
+    es: {
+        brandSubtitle: 'Calculadora de Inversiones',
+        navHome: 'Inicio',
+        navCalculator: 'Calculadora',
+        navProjects: 'Deals',
+        heroSubtitle: 'Calculadora de Inversiones',
+        heroStatRoi: 'ROI Promedio',
+        heroStatDeals: 'Deals',
+        heroStatAvailability: 'Disponibilidad',
+        homeSubtitle: 'Panel de Control',
+        homeTitle: 'Bienvenido a Fix & Flip',
+        homeCardCalcTitle: 'Calculadora',
+        homeCardCalcDesc: 'Análisis detallado de inversión Fix & Flip',
+        homeCardDealsTitle: 'Deals',
+        homeCardDealsDesc: 'Gestión y seguimiento de tus propiedades',
+        homeCardPmTitle: 'Project Manager',
+        homeCardPmDesc: 'Control y ejecución de obras en tiempo real',
+        calculatorSubtitle: 'Paso 1: Análisis',
+        calculatorTitle: 'Calculadora Fix & Flip',
+        calculatorCardTitle: 'Fix & Flip Underwriting Calculator',
+        btnCalculate: 'Calculate Now',
+        btnSave: 'Save Deal',
+        btnReset: 'Reset',
+        liveResultsTitle: 'Live Results',
+        resultLabelTotalInvestment: 'Total Investment',
+        resultLabelProjectedProfit: 'Projected Profit',
+        resultLabelCoc: 'Cash on Cash',
+        resultLabelDealStatus: 'Deal Status',
+        recommendationLabel: 'Recomendación:',
+        recommendationDefault: 'Ingresa los datos del proyecto para evaluar viabilidad.',
+        recommendationDefaultShort: 'Ingresa datos para evaluar',
+        scenariosTitle: 'ROI Scenarios',
+        scenariosThScenario: 'Scenario',
+        scenariosThNetSale: 'Net Sale Price',
+        projectsSubtitle: 'Paso 2: Inventario',
+        projectsTitle: 'Mis Deals',
+        projectsListTitle: 'Lista de Deals',
+        backToDeals: 'Volver a Deals',
+        reportEmptyMessage: 'Selecciona un proyecto para ver su reporte detallado',
+        footerSubtitle: 'Calculadora de Inversiones',
+        footerRights: '© 2024 Fix & Flip. Todos los derechos reservados.',
+        footerPowered: 'Powered by Advanced Analytics',
+        managerSelectDeal: 'Selecciona un deal para abrir Project Manager',
+        managerOpenFromDeals: 'Abre Project Manager desde la tabla de Deals',
+        evaluateNoData: 'Sin Datos',
+        evaluateNoDataRec: 'Ingresa datos para evaluar el deal',
+        evaluateExcellent: 'Excelente',
+        evaluateExcellentRec: '¡Excelente oportunidad! Recomendado proceder inmediatamente.',
+        evaluateGood: 'Bueno',
+        evaluateGoodRec: 'Buen deal con potencial sólido. Considerar proceder.',
+        evaluateFair: 'Regular',
+        evaluateFairRec: 'Deal aceptable pero con riesgos. Evaluar cuidadosamente.',
+        evaluatePoor: 'Malo',
+        evaluatePoorRec: 'Deal no recomendado. Buscar mejores oportunidades.',
+        dealStatusGood: '✅ DEAL BUENO',
+        dealStatusBad: '❌ NO RECOMENDADO',
+        badgeGood: 'BUENO',
+        badgeBad: 'MALO',
+        noProjectsExport: 'No hay proyectos para exportar',
+        noCalculationSave: 'No hay cálculo para guardar',
+        projectUpdated: 'Deal actualizado exitosamente',
+        projectCreatedFallback: 'Deal creado (ID previo no encontrado)',
+        projectSaved: 'Deal guardado exitosamente',
+        projectLoaded: 'Proyecto cargado exitosamente',
+        projectNotFound: 'Proyecto no encontrado',
+        projectDeleted: 'Deal eliminado exitosamente',
+        editingDeal: 'Editando deal:'
+    },
+    en: {
+        brandSubtitle: 'Investment Calculator',
+        navHome: 'Home',
+        navCalculator: 'Calculator',
+        navProjects: 'Deals',
+        heroSubtitle: 'Investment Calculator',
+        heroStatRoi: 'Average ROI',
+        heroStatDeals: 'Deals',
+        heroStatAvailability: 'Availability',
+        homeSubtitle: 'Dashboard',
+        homeTitle: 'Welcome to Fix & Flip',
+        homeCardCalcTitle: 'Calculator',
+        homeCardCalcDesc: 'Detailed Fix & Flip investment analysis',
+        homeCardDealsTitle: 'Deals',
+        homeCardDealsDesc: 'Track and manage your properties',
+        homeCardPmTitle: 'Project Manager',
+        homeCardPmDesc: 'Real-time project execution and control',
+        calculatorSubtitle: 'Step 1: Analysis',
+        calculatorTitle: 'Fix & Flip Calculator',
+        calculatorCardTitle: 'Fix & Flip Underwriting Calculator',
+        btnCalculate: 'Calculate Now',
+        btnSave: 'Save Deal',
+        btnReset: 'Reset',
+        liveResultsTitle: 'Live Results',
+        resultLabelTotalInvestment: 'Total Investment',
+        resultLabelProjectedProfit: 'Projected Profit',
+        resultLabelCoc: 'Cash on Cash',
+        resultLabelDealStatus: 'Deal Status',
+        recommendationLabel: 'Recommendation:',
+        recommendationDefault: 'Enter project data to evaluate feasibility.',
+        recommendationDefaultShort: 'Enter data to evaluate',
+        scenariosTitle: 'ROI Scenarios',
+        scenariosThScenario: 'Scenario',
+        scenariosThNetSale: 'Net Sale Price',
+        projectsSubtitle: 'Step 2: Inventory',
+        projectsTitle: 'My Deals',
+        projectsListTitle: 'Deals List',
+        backToDeals: 'Back to Deals',
+        reportEmptyMessage: 'Select a project to view its detailed report',
+        footerSubtitle: 'Investment Calculator',
+        footerRights: '© 2024 Fix & Flip. All rights reserved.',
+        footerPowered: 'Powered by Advanced Analytics',
+        managerSelectDeal: 'Select a deal to open Project Manager',
+        managerOpenFromDeals: 'Open Project Manager from the Deals table',
+        evaluateNoData: 'No Data',
+        evaluateNoDataRec: 'Enter data to evaluate this deal',
+        evaluateExcellent: 'Excellent',
+        evaluateExcellentRec: 'Excellent opportunity! Strongly recommended to proceed.',
+        evaluateGood: 'Good',
+        evaluateGoodRec: 'Good deal with solid potential. Consider proceeding.',
+        evaluateFair: 'Fair',
+        evaluateFairRec: 'Acceptable deal but with risks. Review carefully.',
+        evaluatePoor: 'Poor',
+        evaluatePoorRec: 'Deal not recommended. Look for better opportunities.',
+        dealStatusGood: '✅ GOOD DEAL',
+        dealStatusBad: '❌ NO DEAL',
+        badgeGood: 'GOOD',
+        badgeBad: 'BAD',
+        noProjectsExport: 'No projects to export',
+        noCalculationSave: 'No calculation to save',
+        projectUpdated: 'Deal updated successfully',
+        projectCreatedFallback: 'Deal created (previous ID not found)',
+        projectSaved: 'Deal saved successfully',
+        projectLoaded: 'Project loaded successfully',
+        projectNotFound: 'Project not found',
+        projectDeleted: 'Deal deleted successfully',
+        editingDeal: 'Editing deal:'
+    }
+};
+
+function t(key) {
+    return I18N[currentLanguage]?.[key] ?? I18N.es[key] ?? key;
+}
+
+const I18N_PHRASES = [
+    { es: 'CALCULADORA DE UNDERWRITING FIX & FLIP', en: 'FIX & FLIP UNDERWRITING CALCULATOR' },
+    { es: 'Calculadora de Underwriting Fix & Flip', en: 'Fix & Flip Underwriting Calculator' },
+    { es: 'Inicio', en: 'Home' },
+    { es: 'Calculadora', en: 'Calculator' },
+    { es: 'Panel de Control', en: 'Dashboard' },
+    { es: 'Bienvenido a Fix & Flip', en: 'Welcome to Fix & Flip' },
+    { es: 'Análisis detallado de inversión Fix & Flip', en: 'Detailed Fix & Flip investment analysis' },
+    { es: 'Gestión y seguimiento de tus propiedades', en: 'Track and manage your properties' },
+    { es: 'Control y ejecución de obras en tiempo real', en: 'Real-time project execution and control' },
+    { es: 'Paso 1: Análisis', en: 'Step 1: Analysis' },
+    { es: 'Paso 2: Inventario', en: 'Step 2: Inventory' },
+    { es: 'Mis Deals', en: 'My Deals' },
+    { es: 'Lista de Deals', en: 'Deals List' },
+    { es: 'Volver a Deals', en: 'Back to Deals' },
+    { es: 'Selecciona un proyecto para ver su reporte detallado', en: 'Select a project to view its detailed report' },
+    { es: 'Recomendación:', en: 'Recommendation:' },
+    { es: 'Información de la Propiedad', en: 'Property Info' },
+    { es: 'Ganancia del Proyecto', en: 'Project Profit' },
+    { es: 'Costos del Proyecto', en: 'Project Costs' },
+    { es: 'Dirección de la Propiedad', en: 'Property Address' },
+    { es: 'Meses del Proyecto', en: 'Project Months' },
+    { es: 'Profit Min %', en: 'Profit Min %' },
+    { es: 'Ganancia Mínima Deseada', en: 'Minimum Desired Profit Amount' },
+    { es: 'Ingresa la dirección de la propiedad', en: 'Enter property address' },
+    { es: 'Precio de Compra', en: 'Purchase Price' },
+    { es: 'Presupuesto de Rehab', en: 'Rehab Budget' },
+    { es: 'Costos de Cierre', en: 'Closing Costs' },
+    { es: 'Costos de Mantenimiento (mensual)', en: 'Holding Costs (monthly)' },
+    { es: 'Holding Costs (mensual)', en: 'Holding Costs (monthly)' },
+    { es: 'Resultados en Vivo', en: 'Live Results' },
+    { es: 'Inversión Total', en: 'Total Investment' },
+    { es: 'Ganancia Proyectada', en: 'Projected Profit' },
+    { es: 'Retorno sobre Capital', en: 'Cash on Cash' },
+    { es: 'Estado del Deal', en: 'Deal Status' },
+    { es: 'DEAL BUENO', en: 'GOOD DEAL' },
+    { es: 'NO RECOMENDADO', en: 'NO DEAL' },
+    { es: 'Dirección completa de la propiedad a analizar', en: 'Full address of the property to analyze' },
+    { es: 'Dirección completa de la propieda a analizar', en: 'Full address of the property to analyze' },
+    { es: 'After Repair Value - Valor después de reparaciones', en: 'After Repair Value' },
+    { es: 'Duración estimada del proyecto en meses', en: 'Estimated project duration in months' },
+    { es: 'Porcentaje mínimo de ganancia deseado', en: 'Minimum desired profit percentage' },
+    { es: 'Ganancia mínima deseada', en: 'Minimum desired profit amount' },
+    { es: 'Monto mínimo de ganancia deseada', en: 'Minimum desired profit amount' },
+    { es: 'Precio de compra de la propiedad', en: 'Property purchase price' },
+    { es: 'Presupuesto de renovación', en: 'Renovation budget' },
+    { es: 'Costos de cierre', en: 'Closing costs' },
+    { es: 'Holding Costs (mensual)', en: 'Holding Costs (monthly)' },
+    { es: 'Costos de mantenimiento por mes (se multiplicará por Project Months)', en: 'Monthly holding costs (multiplied by Project Months)' },
+    { es: 'Suma total de costos del proyecto', en: 'Total sum of project costs' },
+    { es: 'Puntos del préstamo HML', en: 'HML loan points' },
+    { es: 'Tasa de interés anual', en: 'Annual interest rate' },
+    { es: 'Tipo de cálculo de interés', en: 'Interest calculation type' },
+    { es: 'Fees administrativos HML', en: 'HML admin fees' },
+    { es: 'Monto del Down Payment (se calculará el % automáticamente)', en: 'Down payment amount (% is calculated automatically)' },
+    { es: 'Porcentaje del Down Payment sobre Purchase Price', en: 'Down payment percent over Purchase Price' },
+    { es: 'Monto calculado automáticamente (Purchase Price - Down Payment)', en: 'Automatically calculated amount (Purchase Price - Down Payment)' },
+    { es: 'Porcentaje calculado automáticamente sobre Purchase Price', en: 'Automatically calculated percentage over Purchase Price' },
+    { es: 'Loan-to-Value basado en ARV (HML Loan ÷ ARV × 100)', en: 'ARV-based Loan-to-Value (HML Loan ÷ ARV × 100)' },
+    { es: 'Intereses totales del préstamo', en: 'Total loan interest' },
+    { es: 'Total de fees del préstamo (puntos + intereses + admin)', en: 'Total loan fees (points + interest + admin)' },
+    { es: 'Comisiones de agente inmobiliario', en: 'Real estate agent commissions' },
+    { es: 'Costos de cierre al vender', en: 'Resale closing costs' },
+    { es: 'Comisiones calculadas (ARV × %)', en: 'Calculated commissions (ARV × %)' },
+    { es: 'Total costos de venta (comisiones + cierre)', en: 'Total selling costs (commissions + closing)' },
+    { es: 'Precio neto de venta (ARV - costos)', en: 'Net sale price (ARV - costs)' },
+    { es: 'Costos del Proyecto', en: 'Project Costs' },
+    { es: 'Información de la Propiedad', en: 'Property Info' },
+    { es: 'Ganancia del Proyecto', en: 'Project Profit' },
+    { es: 'Financiamiento HML', en: 'HML Financing' },
+    { es: 'Términos de Financiamiento', en: 'Financing Terms' },
+    { es: 'Costos de Venta', en: 'Selling Costs' },
+    { es: 'Análisis Total', en: 'Total Analysis' },
+    { es: 'Análisis del Deal', en: 'Deal Analysis' },
+    { es: 'Costos Calculados', en: 'Calculated Costs' },
+    { es: 'Project Manager', en: 'Project Manager' },
+    { es: 'Administrador de Proyecto', en: 'Project Manager' },
+    { es: 'Panel del Proyecto', en: 'Project Dashboard' },
+    { es: 'Interior', en: 'Interior' },
+    { es: 'Exterior', en: 'Exterior' },
+    { es: 'Presupuesto', en: 'Budget' },
+    { es: 'Cronograma', en: 'Timeline' },
+    { es: 'Materiales', en: 'Materials' },
+    { es: 'Mano de Obra', en: 'Labor' },
+    { es: 'Guardar', en: 'Save' },
+    { es: 'Eliminar', en: 'Delete' },
+    { es: 'Editar', en: 'Edit' },
+    { es: 'Ver', en: 'View' },
+    { es: 'Descargar PDF', en: 'Download PDF' },
+    { es: 'Todos los derechos reservados.', en: 'All rights reserved.' },
+    { es: 'Calculadora de Inversiones', en: 'Investment Calculator' }
+];
+
+function localizeString(inputText, lang) {
+    if (!inputText || typeof inputText !== 'string') return inputText;
+    let output = inputText;
+
+    const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const replaceFlexible = (text, source, target) => {
+        if (!source) return text;
+        const escaped = escapeRegex(source.trim()).replace(/\s+/g, '\\s+');
+        const regex = new RegExp(escaped, 'gi');
+        return text.replace(regex, target);
+    };
+
+    I18N_PHRASES.forEach(({ es, en }) => {
+        const target = lang === 'en' ? en : es;
+        output = replaceFlexible(output, es, target);
+        output = replaceFlexible(output, en, target);
+    });
+
+    return output;
+}
+
+function localizeDOMPhrases(root = document.body) {
+    if (!root) return;
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (!node?.parentElement) continue;
+        const tag = node.parentElement.tagName;
+        if (tag === 'SCRIPT' || tag === 'STYLE') continue;
+        textNodes.push(node);
+    }
+
+    textNodes.forEach((node) => {
+        const original = node.nodeValue;
+        const localized = localizeString(original, currentLanguage);
+        if (localized !== original) {
+            node.nodeValue = localized;
+        }
+    });
+
+    const attrSelectors = ['[placeholder]', '[title]', '[aria-label]'];
+    root.querySelectorAll(attrSelectors.join(',')).forEach((el) => {
+        ['placeholder', 'title', 'aria-label'].forEach((attr) => {
+            const value = el.getAttribute(attr);
+            if (!value) return;
+            const localized = localizeString(value, currentLanguage);
+            if (localized !== value) {
+                el.setAttribute(attr, localized);
+            }
+        });
+    });
+}
+
+let i18nObserver = null;
+
+function ensureI18nObserver() {
+    if (i18nObserver || !document.body) return;
+    i18nObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    localizeDOMPhrases(node);
+                }
+            });
+        });
+    });
+
+    i18nObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+function applyTranslations() {
+    document.documentElement.lang = currentLanguage;
+
+    const map = {
+        'brand-subtitle': 'brandSubtitle',
+        'nav-home-label': 'navHome',
+        'nav-calculator-label': 'navCalculator',
+        'nav-projects-label': 'navProjects',
+        'hero-subtitle': 'heroSubtitle',
+        'hero-stat-roi': 'heroStatRoi',
+        'hero-stat-deals': 'heroStatDeals',
+        'hero-stat-availability': 'heroStatAvailability',
+        'home-subtitle': 'homeSubtitle',
+        'home-title': 'homeTitle',
+        'home-card-calc-title': 'homeCardCalcTitle',
+        'home-card-calc-desc': 'homeCardCalcDesc',
+        'home-card-deals-title': 'homeCardDealsTitle',
+        'home-card-deals-desc': 'homeCardDealsDesc',
+        'home-card-pm-title': 'homeCardPmTitle',
+        'home-card-pm-desc': 'homeCardPmDesc',
+        'calculator-subtitle': 'calculatorSubtitle',
+        'calculator-title': 'calculatorTitle',
+        'btn-calculate-label': 'btnCalculate',
+        'btn-save-label': 'btnSave',
+        'btn-reset-label': 'btnReset',
+        'result-label-total-investment': 'resultLabelTotalInvestment',
+        'result-label-projected-profit': 'resultLabelProjectedProfit',
+        'result-label-coc': 'resultLabelCoc',
+        'result-label-deal-status': 'resultLabelDealStatus',
+        'result-recommendation-label': 'recommendationLabel',
+        'projects-subtitle': 'projectsSubtitle',
+        'projects-title': 'projectsTitle',
+        'back-to-deals-label': 'backToDeals',
+        'report-empty-message': 'reportEmptyMessage',
+        'footer-subtitle': 'footerSubtitle',
+        'footer-rights': 'footerRights',
+        'footer-powered': 'footerPowered'
+    };
+
+    Object.entries(map).forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = t(key);
+    });
+
+    const recommendationDefault = document.getElementById('result-recommendation-text');
+    if (recommendationDefault && !currentCalculation) {
+        recommendationDefault.textContent = t('recommendationDefault');
+    }
+    const recommendationShort = document.getElementById('recommendation-text');
+    if (recommendationShort && !currentCalculation) {
+        recommendationShort.textContent = t('recommendationDefaultShort');
+    }
+
+    const calculatorCardTitle = document.getElementById('calculator-card-title');
+    if (calculatorCardTitle) {
+        calculatorCardTitle.innerHTML = `<i class="bi bi-calculator-fill me-2"></i>${t('calculatorCardTitle')}`;
+    }
+
+    const liveResultsTitle = document.getElementById('live-results-title');
+    if (liveResultsTitle) {
+        liveResultsTitle.innerHTML = `<i class="bi bi-lightning-fill me-2"></i>${t('liveResultsTitle')}`;
+    }
+
+    const scenariosTitle = document.getElementById('scenarios-title');
+    if (scenariosTitle) {
+        scenariosTitle.innerHTML = `<i class="bi bi-table me-2"></i>${t('scenariosTitle')}`;
+    }
+
+    const projectsListTitle = document.getElementById('projects-list-title');
+    if (projectsListTitle) {
+        projectsListTitle.innerHTML = `<i class="bi bi-folder-fill me-2"></i>${t('projectsListTitle')}`;
+    }
+
+    const thScenario = document.getElementById('scenarios-th-scenario');
+    if (thScenario) thScenario.textContent = t('scenariosThScenario');
+    const thNetSale = document.getElementById('scenarios-th-net-sale');
+    if (thNetSale) thNetSale.textContent = t('scenariosThNetSale');
+
+    localizeDOMPhrases(document.body);
+}
+const MAX_MONEY_INPUT = 100000000;
+const INPUT_RANGE_RULES = {
+    'project-months': { min: 0, max: 120 },
+    'arv': { min: 0, max: MAX_MONEY_INPUT },
+    'purchase-price': { min: 0, max: MAX_MONEY_INPUT },
+    'rehab-budget': { min: 0, max: MAX_MONEY_INPUT },
+    'closing-costs': { min: 0, max: MAX_MONEY_INPUT },
+    'holding-costs': { min: 0, max: MAX_MONEY_INPUT },
+    'hml-loan-amount': { min: 0, max: MAX_MONEY_INPUT },
+    'hml-loan-percent': { min: 0, max: 100 },
+    'down-payment-amount': { min: 0, max: MAX_MONEY_INPUT },
+    'down-payment-percent': { min: 0, max: 100 },
+    'hml-points-rate': { min: 0, max: 20 },
+    'hml-interest-rate': { min: 0, max: 100 },
+    'hml-admin-fees': { min: 0, max: MAX_MONEY_INPUT },
+    're-commissions': { min: 0, max: 20 },
+    'resale-closing-costs': { min: 0, max: MAX_MONEY_INPUT },
+    'profit-min-percent': { min: 0, max: 100 },
+    'profit-min-amount': { min: 0, max: MAX_MONEY_INPUT }
+};
+
+function clampValueByRule(value, rule) {
+    let nextValue = value;
+    if (typeof rule?.min === 'number') nextValue = Math.max(rule.min, nextValue);
+    if (typeof rule?.max === 'number') nextValue = Math.min(rule.max, nextValue);
+    return nextValue;
+}
+
+function sanitizeNumericInputElement(inputElement, { forceWrite = false } = {}) {
+    if (!inputElement || inputElement.type !== 'number') return;
+
+    const rawValue = inputElement.value;
+    if (rawValue === '') return;
+
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed)) {
+        inputElement.value = '0';
+        return;
+    }
+
+    const rule = INPUT_RANGE_RULES[inputElement.id];
+    const clamped = rule ? clampValueByRule(parsed, rule) : parsed;
+
+    if (forceWrite || String(clamped) !== rawValue) {
+        inputElement.value = String(clamped);
+    }
+}
+
+function applyInputRangeAttributes() {
+    Object.entries(INPUT_RANGE_RULES).forEach(([id, rule]) => {
+        const element = document.getElementById(id);
+        if (!element) return;
+        if (typeof rule.min === 'number') element.min = String(rule.min);
+        if (typeof rule.max === 'number') element.max = String(rule.max);
+    });
+}
+
+function parseRouteHash(hashValue = window.location.hash) {
+    const raw = (hashValue || '').replace(/^#/, '').trim().toLowerCase();
+    if (!raw) {
+        return { section: 'home', dealId: null };
+    }
+
+    if (raw.startsWith('manager-')) {
+        const dealId = Number(raw.replace('manager-', ''));
+        return {
+            section: 'manager',
+            dealId: Number.isFinite(dealId) ? dealId : null
+        };
+    }
+
+    if (ROUTE_SECTIONS.has(raw)) {
+        return { section: raw, dealId: null };
+    }
+
+    return { section: 'home', dealId: null };
+}
+
+function syncRoute(route, { replace = false } = {}) {
+    if (suppressRouteSync) return;
+
+    const nextHash = route.section === 'manager'
+        ? `#manager-${route.dealId || ''}`.replace(/-$/, '')
+        : `#${route.section}`;
+
+    const state = { section: route.section, dealId: route.dealId || null };
+    const method = replace ? 'replaceState' : 'pushState';
+    window.history[method](state, '', nextHash);
+}
+
+function applyRoute(route, { replace = false, skipHistory = false } = {}) {
+    if (route.section === 'manager') {
+        if (route.dealId) {
+            openProjectManager(route.dealId, { skipHistory: true });
+            if (!skipHistory) syncRoute(route, { replace });
+            return;
+        }
+
+        showSection('projects', { skipHistory: true });
+        showNotification(t('managerSelectDeal'), 'info');
+        if (!skipHistory) syncRoute({ section: 'projects', dealId: null }, { replace });
+        return;
+    }
+
+    showSection(route.section, { skipHistory: true });
+    if (!skipHistory) syncRoute(route, { replace });
+}
 
 // Test calculations function
 function testCalculations() {
@@ -55,8 +558,8 @@ function evaluateDeal(calculation) {
         return {
             score: 0,
             level: 'poor',
-            levelText: 'Sin Datos',
-            recommendation: 'Ingresa datos para evaluar el deal',
+            levelText: t('evaluateNoData'),
+            recommendation: t('evaluateNoDataRec'),
             icon: '📊',
             risk: 'Desconocido',
             roi: 0,
@@ -157,23 +660,23 @@ function evaluateDeal(calculation) {
     
     if (score >= 80) {
         level = 'excellent';
-        levelText = 'Excelente';
-        recommendation = '¡Excelente oportunidad! Recomendado proceder inmediatamente.';
+        levelText = t('evaluateExcellent');
+        recommendation = t('evaluateExcellentRec');
         icon = '🚀';
     } else if (score >= 60) {
         level = 'good';
-        levelText = 'Bueno';
-        recommendation = 'Buen deal con potencial sólido. Considerar proceder.';
+        levelText = t('evaluateGood');
+        recommendation = t('evaluateGoodRec');
         icon = '✅';
     } else if (score >= 40) {
         level = 'fair';
-        levelText = 'Regular';
-        recommendation = 'Deal aceptable pero con riesgos. Evaluar cuidadosamente.';
+        levelText = t('evaluateFair');
+        recommendation = t('evaluateFairRec');
         icon = '⚠️';
     } else {
         level = 'poor';
-        levelText = 'Malo';
-        recommendation = 'Deal no recomendado. Buscar mejores oportunidades.';
+        levelText = t('evaluatePoor');
+        recommendation = t('evaluatePoorRec');
         icon = '❌';
     }
 
@@ -190,52 +693,74 @@ function evaluateDeal(calculation) {
     };
 }
 
-// Update deal evaluator UI
+// Update deal evaluator UI (semicircular gauge + score)
 function updateDealEvaluator(evaluation) {
     try {
-        // Update thermometer
-        const thermometerFill = document.getElementById('thermometer-fill');
-        const thermometerBulb = document.getElementById('thermometer-bulb');
-        
-        if (!thermometerFill || !thermometerBulb) {
-            console.warn('Thermometer elements not found, skipping update');
+        const needleRot = document.getElementById('gauge-needle-rot');
+        const gaugeSvg = document.querySelector('.deal-gauge-svg');
+        const evaluatorRoot = document.querySelector('.deal-evaluator');
+
+        if (!needleRot) {
+            console.warn('Gauge needle element not found, skipping deal evaluator update');
             return;
         }
-        
-        // Remove all level classes
-        thermometerFill.className = 'thermometer-fill';
-        thermometerBulb.className = 'thermometer-bulb';
-        
-        // Add current level class
-        thermometerFill.classList.add(evaluation.level);
-        thermometerBulb.classList.add(evaluation.level);
-        
-        // Update score
-        const scoreElement = document.getElementById('score-value');
-        if (scoreElement) {
-            scoreElement.textContent = evaluation.score;
+
+        const score = Math.max(0, Math.min(100, Number(evaluation.score) || 0));
+        const noData = evaluation.levelText === t('evaluateNoData');
+
+        // Needle: -90° = Malo (izq.), + 90° = Excelente (der.)
+        const needleDeg = -90 + (score / 100) * 180;
+        needleRot.style.transform = `rotate(${needleDeg}deg)`;
+        needleRot.style.transformOrigin = '0 0';
+
+        if (gaugeSvg) {
+            gaugeSvg.setAttribute(
+                'aria-label',
+                noData
+                    ? 'Sin datos para evaluar el deal'
+                    : `Puntuación ${score} de cien, nivel ${evaluation.levelText}`,
+            );
         }
-        
-        // Update details
+
+        if (evaluatorRoot) {
+            evaluatorRoot.classList.toggle('deal-evaluator--empty', noData);
+        }
+
+        document.querySelectorAll('.gauge-wedge').forEach((el) => {
+            const seg = el.getAttribute('data-level');
+            if (noData) {
+                el.classList.remove('gauge-wedge--dim');
+                return;
+            }
+            el.classList.toggle('gauge-wedge--dim', seg !== evaluation.level);
+        });
+
+        const scoreElement = document.getElementById('score-value');
+        if (scoreElement) scoreElement.textContent = String(score);
+
+        const levelEl = document.getElementById('evaluator-level');
+        if (levelEl) levelEl.textContent = evaluation.levelText || '';
+
         const roiElement = document.getElementById('detail-roi');
         const profitElement = document.getElementById('detail-profit');
         const riskElement = document.getElementById('detail-risk');
-        
+
         if (roiElement) roiElement.textContent = formatPercentage(evaluation.roi);
         if (profitElement) profitElement.textContent = formatCurrency(evaluation.profit);
         if (riskElement) riskElement.textContent = evaluation.risk;
-        
-        // Update recommendation
+
         const iconElement = document.getElementById('recommendation-icon');
         const textElement = document.getElementById('recommendation-text');
-        
+
         if (iconElement) iconElement.textContent = evaluation.icon;
         if (textElement) textElement.textContent = evaluation.recommendation;
-        
+
+        const resultRecEl = document.getElementById('result-recommendation-text');
+        if (resultRecEl) resultRecEl.textContent = evaluation.recommendation;
+
         console.log('Deal evaluator updated:', evaluation);
     } catch (error) {
         console.error('Error updating deal evaluator:', error);
-        // Don't show notification to avoid spam
     }
 }
 
@@ -275,18 +800,52 @@ function formatCurrency(amount) {
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM Loaded - Initializing calculator...');
 
+    if (!I18N[currentLanguage]) {
+        currentLanguage = 'es';
+    }
+    const langSwitcher = document.getElementById('language-switcher');
+    if (langSwitcher) {
+        langSwitcher.value = currentLanguage;
+        langSwitcher.addEventListener('change', (event) => {
+            currentLanguage = event.target.value === 'en' ? 'en' : 'es';
+            localStorage.setItem('fixFlipLanguage', currentLanguage);
+            applyTranslations();
+            loadProjects();
+            if (currentCalculation) {
+                updateUI();
+            }
+        });
+    }
+    applyTranslations();
+    ensureI18nObserver();
+
     // Load projects and setup
     loadProjects();
     initializeCharts();
 
     // Setup event listeners for real-time updates
+    applyInputRangeAttributes();
     setupEventListeners();
 
     // Initial calculation
     setTimeout(() => {
         calculateUnderwriting();
-        showSection('home');
+        const initialRoute = parseRouteHash();
+        applyRoute(initialRoute, { replace: true });
     }, 500);
+
+    window.addEventListener('popstate', () => {
+        suppressRouteSync = true;
+        applyRoute(parseRouteHash(), { skipHistory: true });
+        suppressRouteSync = false;
+    });
+
+    document.addEventListener('click', (event) => {
+        const anchor = event.target.closest('a[href="#"]');
+        if (anchor) {
+            event.preventDefault();
+        }
+    });
 
     console.log('Initialization complete');
 });
@@ -308,6 +867,7 @@ function setupEventListeners() {
 
         input.addEventListener('input', function () {
             console.log(`Input ${index} (${input.id}) changed to: ${input.value}`);
+            sanitizeNumericInputElement(input);
             
             // Clear previous timeout
             if (calculationTimeout) {
@@ -322,11 +882,13 @@ function setupEventListeners() {
 
         input.addEventListener('change', function () {
             console.log(`Input ${index} (${input.id}) changed (change event): ${input.value}`);
+            sanitizeNumericInputElement(input, { forceWrite: true });
             calculateUnderwriting();
         });
 
         input.addEventListener('blur', function () {
             console.log(`Input ${index} (${input.id}) blurred with value: ${input.value}`);
+            sanitizeNumericInputElement(input, { forceWrite: true });
             // Calculate when user leaves the field
             calculateUnderwriting();
         });
@@ -347,9 +909,15 @@ function calculateUnderwriting() {
                 console.warn(`Element not found: ${id}`);
                 return defaultValue;
             }
-            const value = parseFloat(element.value) || defaultValue;
-            console.log(`${id}: ${value}`);
-            return value;
+            const parsed = parseFloat(element.value);
+            const numericValue = Number.isFinite(parsed) ? parsed : defaultValue;
+            const rule = INPUT_RANGE_RULES[id];
+            const safeValue = rule ? clampValueByRule(numericValue, rule) : numericValue;
+            if (element.type === 'number' && element.value !== String(safeValue)) {
+                element.value = String(safeValue);
+            }
+            console.log(`${id}: ${safeValue}`);
+            return safeValue;
         };
 
         const getInputText = (id, defaultValue = '') => {
@@ -665,7 +1233,7 @@ function updateUI() {
 
         const statusElement = document.getElementById('result-deal-status');
         if (statusElement) {
-            statusElement.textContent = currentCalculation.dealDecision ? '✅ GOOD DEAL' : '❌ NO DEAL';
+            statusElement.textContent = currentCalculation.dealDecision ? t('dealStatusGood') : t('dealStatusBad');
             statusElement.style.color = currentCalculation.dealDecision ? '#4CAF50' : '#F44336';
         }
 
@@ -746,7 +1314,7 @@ function showNotification(message, type = 'info') {
 // Save project function
 function saveProject() {
     if (!currentCalculation) {
-        showNotification('No hay cálculo para guardar', 'error');
+        showNotification(t('noCalculationSave'), 'error');
         return;
     }
 
@@ -759,11 +1327,11 @@ function saveProject() {
                 id: editingProjectId,
                 date: new Date().toISOString()
             };
-            showNotification('Deal actualizado exitosamente', 'success');
+            showNotification(t('projectUpdated'), 'success');
         } else {
             // Fallback if ID not found
             projects.push({ ...currentCalculation, id: Date.now() });
-            showNotification('Deal creado (ID previo no encontrado)', 'info');
+            showNotification(t('projectCreatedFallback'), 'info');
         }
         editingProjectId = null;
     } else {
@@ -773,7 +1341,7 @@ function saveProject() {
             id: Date.now()
         };
         projects.push(project);
-        showNotification('Deal guardado exitosamente', 'success');
+        showNotification(t('projectSaved'), 'success');
     }
 
     localStorage.setItem('fixFlipProjects', JSON.stringify(projects));
@@ -817,7 +1385,7 @@ function loadProjects() {
                 <td class="${project.profit >= 0 ? 'text-success-gold' : 'text-danger-gold'}">${formatCurrency(project.profit)}</td>
                 <td>
                     <span class="badge ${project.dealDecision ? 'bg-success' : 'bg-danger'}">
-                        ${project.dealDecision ? 'BUENO' : 'MALO'}
+                        ${project.dealDecision ? t('badgeGood') : t('badgeBad')}
                     </span>
                 </td>
                 <td>
@@ -849,12 +1417,12 @@ function loadProjects() {
 function viewProject(projectId) {
     const project = projects.find(p => p.id === projectId);
     if (!project) {
-        showNotification('Proyecto no encontrado', 'error');
+        showNotification(t('projectNotFound'), 'error');
         return;
     }
 
     editingProjectId = projectId;
-    showNotification(`Editando deal: ${project.propertyAddress}`, 'info');
+    showNotification(`${t('editingDeal')} ${project.propertyAddress}`, 'info');
     showSection('calculator');
 
     // Populate form with project data
@@ -894,7 +1462,7 @@ function viewProject(projectId) {
     // Recalculate to update results
     calculateUnderwriting();
 
-    showNotification('Proyecto cargado exitosamente', 'success');
+    showNotification(t('projectLoaded'), 'success');
 }
 
 // Delete project function
@@ -903,12 +1471,17 @@ function deleteProject(projectId) {
         projects = projects.filter(p => p.id !== projectId);
         localStorage.setItem('fixFlipProjects', JSON.stringify(projects));
         loadProjects();
-        showNotification('Deal eliminado exitosamente', 'success');
+        showNotification(t('projectDeleted'), 'success');
     }
 }
 
 // Show section function
-function showSection(sectionId) {
+function showSection(sectionId, options = {}) {
+    const inlineEvent = options.event || (typeof window !== 'undefined' ? window.event : null);
+    if (inlineEvent && typeof inlineEvent.preventDefault === 'function') {
+        inlineEvent.preventDefault();
+    }
+
     console.log(`Switching to section: ${sectionId}`);
 
     // Hide all sections
@@ -918,17 +1491,24 @@ function showSection(sectionId) {
     });
 
     // Show target section
-    const targetSection = document.getElementById(sectionId + '-section');
+    let resolvedSection = sectionId;
+    let targetSection = document.getElementById(resolvedSection + '-section');
+    if (!targetSection && resolvedSection === 'manager') {
+        resolvedSection = 'projects';
+        targetSection = document.getElementById('projects-section');
+        showNotification(t('managerOpenFromDeals'), 'info');
+    }
+
     if (targetSection) {
         targetSection.style.display = 'block';
     } else {
-        console.warn(`Section ${sectionId}-section not found`);
+        console.warn(`Section ${resolvedSection}-section not found`);
     }
 
     // Handle Hero section visibility
     const heroWrapper = document.getElementById('hero-wrapper');
     if (heroWrapper) {
-        if (sectionId === 'home') {
+        if (resolvedSection === 'home') {
             heroWrapper.style.display = 'flex';
         } else {
             heroWrapper.style.display = 'none';
@@ -941,16 +1521,20 @@ function showSection(sectionId) {
         link.classList.remove('active');
     });
 
-    const activeLink = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
+    const activeLink = document.querySelector(`[onclick="showSection('${resolvedSection}')"]`);
     if (activeLink) {
         activeLink.classList.add('active');
+    }
+
+    if (!options.skipHistory) {
+        syncRoute({ section: resolvedSection, dealId: null });
     }
 }
 
 // Export projects function
 function exportProjects() {
     if (projects.length === 0) {
-        showNotification('No hay proyectos para exportar', 'error');
+        showNotification(t('noProjectsExport'), 'error');
         return;
     }
 
@@ -1062,10 +1646,10 @@ const subcategoryDatabase = {
 };
 
 // Open Project Manager
-function openProjectManager(dealId) {
+function openProjectManager(dealId, options = {}) {
     const project = projects.find(p => p.id === dealId);
     if (!project) {
-        alert('Proyecto no encontrado');
+        alert(t('projectNotFound'));
         return;
     }
 
@@ -1099,6 +1683,10 @@ function openProjectManager(dealId) {
     
     // Actualizar navegación
     updateNavigation('project-manager');
+
+    if (!options.skipHistory) {
+        syncRoute({ section: 'manager', dealId });
+    }
 }
 
 // Load Project Manager data
@@ -3022,7 +3610,7 @@ function deleteProjectItem(itemId) {
 function viewProjectDetails(projectId) {
     const project = projects.find(p => p.id === projectId);
     if (!project) {
-        alert('Proyecto no encontrado');
+        alert(t('projectNotFound'));
         return;
     }
 

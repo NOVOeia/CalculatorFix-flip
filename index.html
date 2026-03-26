@@ -22,7 +22,7 @@
                 <img src="assets/FIXFLIP Calculator.png" alt="Fix & Flip Logo" class="logo me-2" style="height: 40px;">
                 <div class="d-flex flex-column">
                     <span class="fw-bold">Fix & Flip</span>
-                    <small class="small">Calculadora de Inversiones</small>
+                    <small id="brand-subtitle" class="small">Calculadora de Inversiones</small>
                 </div>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -32,18 +32,24 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="showSection('home')">
-                            <i class="bi bi-house-door-fill"></i> Inicio
+                            <i class="bi bi-house-door-fill"></i> <span id="nav-home-label">Inicio</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="showSection('calculator')">
-                            <i class="bi bi-calculator-fill"></i> Calculadora
+                            <i class="bi bi-calculator-fill"></i> <span id="nav-calculator-label">Calculadora</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="showSection('projects')">
-                            <i class="bi bi-folder-fill"></i> Deals
+                            <i class="bi bi-folder-fill"></i> <span id="nav-projects-label">Deals</span>
                         </a>
+                    </li>
+                    <li class="nav-item lang-switcher-item ms-lg-3 mt-2 mt-lg-0">
+                        <select id="language-switcher" class="form-select form-select-sm">
+                            <option value="es">ES</option>
+                            <option value="en">EN</option>
+                        </select>
                     </li>
                 </ul>
             </div>
@@ -58,19 +64,19 @@
                     <img src="assets/FIXFLIP Calculator.png" alt="Fix & Flip Logo" class="hero-logo mb-4"
                         style="height: 120px;">
                     <h1 class="display-4 text-white mb-3">Fix & Flip</h1>
-                    <p class="lead text-gold mb-4">Calculadora de Inversiones</p>
+                    <p id="hero-subtitle" class="lead text-gold mb-4">Calculadora de Inversiones</p>
                     <div class="hero-stats d-flex justify-content-center gap-4">
                         <div class="stat-item">
                             <div class="stat-number">20%+</div>
-                            <div class="stat-label">ROI Promedio</div>
+                            <div id="hero-stat-roi" class="stat-label">ROI Promedio</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-number">100+</div>
-                            <div class="stat-label">Deals</div>
+                            <div id="hero-stat-deals" class="stat-label">Deals</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-number">24/7</div>
-                            <div class="stat-label">Disponibilidad</div>
+                            <div id="hero-stat-availability" class="stat-label">Disponibilidad</div>
                         </div>
                     </div>
                 </div>
@@ -80,25 +86,25 @@
         <!-- Home Section -->
         <div id="home-section" class="content-section">
             <div class="section-header-premium text-center">
-                <span class="section-subtitle">Panel de Control</span>
-                <h2 class="section-title-main">Bienvenido a Fix & Flip</h2>
+                <span id="home-subtitle" class="section-subtitle">Panel de Control</span>
+                <h2 id="home-title" class="section-title-main">Bienvenido a Fix & Flip</h2>
             </div>
             
             <div class="dashboard-grid">
                 <div class="dashboard-card glass-panel" onclick="showSection('calculator')">
                     <i class="bi bi-calculator-fill"></i>
-                    <h3>Calculadora</h3>
-                    <p>Análisis detallado de inversión Fix & Flip</p>
+                    <h3 id="home-card-calc-title">Calculadora</h3>
+                    <p id="home-card-calc-desc">Análisis detallado de inversión Fix & Flip</p>
                 </div>
                 <div class="dashboard-card glass-panel" onclick="showSection('projects')">
                     <i class="bi bi-folder-fill"></i>
-                    <h3>Deals</h3>
-                    <p>Gestión y seguimiento de tus propiedades</p>
+                    <h3 id="home-card-deals-title">Deals</h3>
+                    <p id="home-card-deals-desc">Gestión y seguimiento de tus propiedades</p>
                 </div>
                 <div class="dashboard-card glass-panel" onclick="showSection('manager')">
                     <i class="bi bi-person-workspace"></i>
-                    <h3>Project Manager</h3>
-                    <p>Control y ejecución de obras en tiempo real</p>
+                    <h3 id="home-card-pm-title">Project Manager</h3>
+                    <p id="home-card-pm-desc">Control y ejecución de obras en tiempo real</p>
                 </div>
             </div>
         </div>
@@ -106,14 +112,14 @@
         <!-- Calculator Section -->
         <div id="calculator-section" class="content-section" style="display: none;">
             <div class="section-header-premium">
-                <span class="section-subtitle">Paso 1: Análisis</span>
-                <h2 class="section-title-main">Calculadora Fix & Flip</h2>
+                <span id="calculator-subtitle" class="section-subtitle">Paso 1: Análisis</span>
+                <h2 id="calculator-title" class="section-title-main">Calculadora Fix & Flip</h2>
             </div>
             <div class="row">
                 <div class="col-lg-8">
                     <div class="card glass-panel">
                         <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-calculator-fill me-2"></i>Fix & Flip Underwriting Calculator</h5>
+                            <h5 id="calculator-card-title" class="mb-0"><i class="bi bi-calculator-fill me-2"></i>Fix & Flip Underwriting Calculator</h5>
                         </div>
                         <div class="card-body">
                             <form id="investment-form" class="underwriting-form">
@@ -520,23 +526,75 @@
                                     </div>
                                     <div class="row mt-3">
                                         <div class="col-12">
-                                            <div class="deal-evaluator">
+                                            <div class="deal-evaluator deal-evaluator--empty">
                                                 <div class="evaluator-title">Evaluación del Deal</div>
-                                                <div class="thermometer-container">
-                                                    <div class="thermometer-scale">
-                                                        <div class="scale-marker excellent">Excelente</div>
-                                                        <div class="scale-marker good">Bueno</div>
-                                                        <div class="scale-marker fair">Regular</div>
-                                                        <div class="scale-marker poor">Malo</div>
-                                                    </div>
-                                                    <div class="thermometer-body">
-                                                        <div class="thermometer-fill" id="thermometer-fill">
-                                                            <div class="thermometer-bulb" id="thermometer-bulb"></div>
+                                                <div class="deal-gauge-row">
+                                                    <div class="deal-gauge-visual">
+                                                        <svg class="deal-gauge-svg" viewBox="0 0 200 118"
+                                                            xmlns="http://www.w3.org/2000/svg" role="img"
+                                                            aria-label="Medidor de puntuación del deal 0 a 100">
+                                                            <defs>
+                                                                <filter id="gauge-shadow" x="-20%" y="-20%"
+                                                                    width="140%" height="140%">
+                                                                    <feDropShadow dx="0" dy="2"
+                                                                        stdDeviation="2" flood-opacity="0.35" />
+                                                                </filter>
+                                                                <linearGradient id="grad-poor" x1="0%" y1="0%"
+                                                                    x2="100%" y2="0%">
+                                                                    <stop offset="0%" stop-color="#c0392b" />
+                                                                    <stop offset="100%" stop-color="#e83e8c" />
+                                                                </linearGradient>
+                                                                <linearGradient id="grad-fair" x1="0%" y1="0%"
+                                                                    x2="100%" y2="100%">
+                                                                    <stop offset="0%" stop-color="#fd7e14" />
+                                                                    <stop offset="100%" stop-color="#ffc107" />
+                                                                </linearGradient>
+                                                                <linearGradient id="grad-good" x1="0%" y1="100%"
+                                                                    x2="100%" y2="0%">
+                                                                    <stop offset="0%" stop-color="#138496" />
+                                                                    <stop offset="100%" stop-color="#007bff" />
+                                                                </linearGradient>
+                                                                <linearGradient id="grad-excellent" x1="0%" y1="0%"
+                                                                    x2="100%" y2="0%">
+                                                                    <stop offset="0%" stop-color="#20c997" />
+                                                                    <stop offset="100%" stop-color="#28a745" />
+                                                                </linearGradient>
+                                                            </defs>
+                                                            <g class="gauge-segments" filter="url(#gauge-shadow)">
+                                                                <path class="gauge-wedge" data-level="poor"
+                                                                    d="M 14 100 A 86 86 0 0 1 39.19 39.19 L 63.23 63.23 A 52 52 0 0 0 48 100 Z"
+                                                                    fill="url(#grad-poor)" />
+                                                                <path class="gauge-wedge" data-level="fair"
+                                                                    d="M 39.19 39.19 A 86 86 0 0 1 100 14 L 100 48 A 52 52 0 0 0 63.23 63.23 Z"
+                                                                    fill="url(#grad-fair)" />
+                                                                <path class="gauge-wedge" data-level="good"
+                                                                    d="M 100 14 A 86 86 0 0 1 160.81 39.19 L 136.77 63.23 A 52 52 0 0 0 100 48 Z"
+                                                                    fill="url(#grad-good)" />
+                                                                <path class="gauge-wedge" data-level="excellent"
+                                                                    d="M 160.81 39.19 A 86 86 0 0 1 186 100 L 152 100 A 52 52 0 0 0 136.77 63.23 Z"
+                                                                    fill="url(#grad-excellent)" />
+                                                            </g>
+                                                            <g class="gauge-needle-pivot" transform="translate(100,100)">
+                                                                <g id="gauge-needle-rot" class="gauge-needle-rot"
+                                                                    style="transform: rotate(-90deg);">
+                                                                    <line class="gauge-needle" x1="0" y1="0"
+                                                                        x2="0" y2="-76" stroke-width="4.5"
+                                                                        stroke-linecap="round" />
+                                                                </g>
+                                                                <circle class="gauge-hub" cx="0" cy="0" r="10" />
+                                                            </g>
+                                                        </svg>
+                                                        <div class="gauge-scale-labels" aria-hidden="true">
+                                                            <span>Malo</span>
+                                                            <span>Regular</span>
+                                                            <span>Bueno</span>
+                                                            <span>Excelente</span>
                                                         </div>
                                                     </div>
                                                     <div class="evaluator-score" id="evaluator-score">
                                                         <div class="score-value" id="score-value">0</div>
                                                         <div class="score-label">Puntos</div>
+                                                        <div class="evaluator-level" id="evaluator-level">Sin Datos</div>
                                                     </div>
                                                 </div>
                                                 <div class="evaluator-details" id="evaluator-details">
@@ -563,17 +621,17 @@
                                 </div>
 
                                 <!-- Action Buttons -->
-                                <div class="text-center mt-4">
+                                <div class="text-center mt-4 action-buttons-group">
                                     <button type="button" class="btn btn-warning btn-lg"
                                         onclick="calculateUnderwriting()">
-                                        <i class="bi bi-calculator-fill"></i> Calculate Now
+                                        <i class="bi bi-calculator-fill"></i> <span id="btn-calculate-label">Calculate Now</span>
                                     </button>
                                     <button type="button" class="btn btn-success btn-lg ms-2" onclick="saveProject()">
-                                        <i class="bi bi-save-fill"></i> Save Deal
+                                        <i class="bi bi-save-fill"></i> <span id="btn-save-label">Save Deal</span>
                                     </button>
                                     <button type="button" class="btn btn-primary btn-lg ms-2"
                                         onclick="resetCalculator()">
-                                        <i class="bi bi-arrow-clockwise"></i> Reset
+                                        <i class="bi bi-arrow-clockwise"></i> <span id="btn-reset-label">Reset</span>
                                     </button>
                                 </div>
                             </form>
@@ -585,15 +643,15 @@
                 <div class="col-lg-4">
                     <div class="card glass-panel sticky-top">
                         <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-lightning-fill me-2"></i>Live Results</h5>
+                            <h5 id="live-results-title" class="mb-0"><i class="bi bi-lightning-fill me-2"></i>Live Results</h5>
                         </div>
                         <div class="card-body" id="results-section">
                             <div class="result-item">
-                                <div class="result-label">Total Investment</div>
+                                <div id="result-label-total-investment" class="result-label">Total Investment</div>
                                 <div class="result-value" id="result-total-investment">$0</div>
                             </div>
                             <div class="result-item">
-                                <div class="result-label">Projected Profit</div>
+                                <div id="result-label-projected-profit" class="result-label">Projected Profit</div>
                                 <div class="result-value" id="result-profit">$0</div>
                             </div>
                             <div class="result-item">
@@ -601,15 +659,15 @@
                                 <div class="result-value" id="result-roi">0.0%</div>
                             </div>
                             <div class="result-item">
-                                <div class="result-label">Cash on Cash</div>
+                                <div id="result-label-coc" class="result-label">Cash on Cash</div>
                                 <div class="result-value" id="result-coc">0.0%</div>
                             </div>
                             <div class="result-item">
-                                <div class="result-label">Deal Status</div>
+                                <div id="result-label-deal-status" class="result-label">Deal Status</div>
                                 <div class="result-value" id="result-deal-status">❌ NO DEAL</div>
                             </div>
                             <div class="alert alert-custom mt-3" id="result-recommendation">
-                                <strong>Recomendación:</strong> <span id="recommendation-text">Ingresa los datos del
+                                <strong id="result-recommendation-label">Recomendación:</strong> <span id="result-recommendation-text">Ingresa los datos del
                                     proyecto para evaluar viabilidad.</span>
                             </div>
                         </div>
@@ -622,7 +680,7 @@
                 <div class="col-12">
                     <div class="card glass-panel">
                         <div class="card-header">
-                            <h5 class="mb-0"><i class="bi bi-table me-2"></i>ROI Scenarios</h5>
+                            <h5 id="scenarios-title" class="mb-0"><i class="bi bi-table me-2"></i>ROI Scenarios</h5>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -630,10 +688,10 @@
                                     style="background: var(--card-dark) !important;">
                                     <thead>
                                         <tr>
-                                            <th style="color: var(--accent-gold) !important; font-weight: 700;">Scenario
+                                            <th id="scenarios-th-scenario" style="color: var(--accent-gold) !important; font-weight: 700;">Scenario
                                             </th>
                                             <th style="color: var(--accent-gold) !important; font-weight: 700;">ARV</th>
-                                            <th style="color: var(--accent-gold) !important; font-weight: 700;">Net Sale
+                                            <th id="scenarios-th-net-sale" style="color: var(--accent-gold) !important; font-weight: 700;">Net Sale
                                                 Price</th>
                                             <th style="color: var(--accent-gold) !important; font-weight: 700;">Profit
                                             </th>
@@ -653,12 +711,12 @@
 
         <div id="projects-section" class="content-section" style="display: none;">
             <div class="section-header-premium">
-                <span class="section-subtitle">Paso 2: Inventario</span>
-                <h2 class="section-title-main">Mis Deals</h2>
+                <span id="projects-subtitle" class="section-subtitle">Paso 2: Inventario</span>
+                <h2 id="projects-title" class="section-title-main">Mis Deals</h2>
             </div>
             <div class="card glass-panel">
                 <div class="card-body">
-                    <h4 class="text-gold mb-4"><i class="bi bi-folder-fill me-2"></i>Lista de Deals</h4>
+                    <h4 id="projects-list-title" class="text-gold mb-4"><i class="bi bi-folder-fill me-2"></i>Lista de Deals</h4>
                     <div class="table-responsive">
                         <table class="table table-dark table-striped" style="background: var(--card-dark) !important;">
                             <thead>
@@ -690,12 +748,12 @@
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h4 class="text-gold mb-0" style="display: none;"><i class="bi bi-file-earmark-text me-2"></i>Reportes de Deals</h4>
                         <button class="btn btn-outline-warning btn-sm" onclick="backToProjects()">
-                            <i class="bi bi-arrow-left"></i> Volver a Deals
+                            <i class="bi bi-arrow-left"></i> <span id="back-to-deals-label">Volver a Deals</span>
                         </button>
                     </div>     <div class="card-body" id="project-report-content">
                     <div class="text-center text-muted">
                         <i class="bi bi-file-text" style="font-size: 3rem;"></i>
-                        <p class="mt-3">Selecciona un proyecto para ver su reporte detallado</p>
+                        <p id="report-empty-message" class="mt-3">Selecciona un proyecto para ver su reporte detallado</p>
                     </div>
                 </div>
         <!-- Project Manager Section - será creado dinámicamente por JavaScript -->
@@ -711,13 +769,13 @@
                             style="height: 35px;">
                         <div>
                             <h5 class="text-white mb-0">Fix & Flip</h5>
-                            <p class="text-gold mb-0">Calculadora de Inversiones</p>
+                            <p id="footer-subtitle" class="text-gold mb-0">Calculadora de Inversiones</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-6 text-md-end">
-                    <p class="text-white mb-0">© 2024 Fix & Flip. Todos los derechos reservados.</p>
-                    <p class="text-gold mb-0">Powered by Advanced Analytics</p>
+                    <p id="footer-rights" class="text-white mb-0">© 2024 Fix & Flip. Todos los derechos reservados.</p>
+                    <p id="footer-powered" class="text-gold mb-0">Powered by Advanced Analytics</p>
                 </div>
             </div>
         </div>

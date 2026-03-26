@@ -1,0 +1,28 @@
+{
+  "name": "calculatorfix-flip",
+  "version": "1.0.0",
+  "description": "Una aplicación web completa para calcular y gestionar inversiones inmobiliarias del tipo Fix & Flip (comprar, renovar y vender propiedades).",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=20.20.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NOVOeia/CalculatorFix-flip.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NOVOeia/CalculatorFix-flip/issues"
+  },
+  "homepage": "https://github.com/NOVOeia/CalculatorFix-flip#readme",
+  "devDependencies": {
+    "vite": "^8.0.2"
+  }
+}
