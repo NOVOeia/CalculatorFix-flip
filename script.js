@@ -192,9 +192,13 @@ const I18N_PHRASES = [
     { es: 'Estado del Deal', en: 'Deal Status' },
     { es: 'DEAL BUENO', en: 'GOOD DEAL' },
     { es: 'NO RECOMENDADO', en: 'NO DEAL' },
+    { es: 'Conservador', en: 'Conservative' },
+    { es: 'Objetivo', en: 'Target' },
+    { es: 'Agresivo', en: 'Aggressive' },
+    { es: 'No hay datos suficientes para escenarios', en: 'No scenario data available' },
     { es: 'Dirección completa de la propiedad a analizar', en: 'Full address of the property to analyze' },
     { es: 'Dirección completa de la propieda a analizar', en: 'Full address of the property to analyze' },
-    { es: 'After Repair Value - Valor después de reparaciones', en: 'After Repair Value' },
+    { es: 'Valor después de reparaciones', en: 'After Repair Value' },
     { es: 'Duración estimada del proyecto en meses', en: 'Estimated project duration in months' },
     { es: 'Porcentaje mínimo de ganancia deseado', en: 'Minimum desired profit percentage' },
     { es: 'Ganancia mínima deseada', en: 'Minimum desired profit amount' },
@@ -796,6 +800,60 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
+function updateRoiScenarios(calculation) {
+    const tbody = document.getElementById('scenarios-tbody');
+    if (!tbody || !calculation) return;
+
+    const targetRoi = Number(calculation.profitMinPercent) || 0;
+    const reComRate = Number(calculation.reCommissions) || 0;
+    const closingSell = Number(calculation.resaleClosingCosts) || 0;
+    const tpc = Number(calculation.tpcPlusCost) || 0;
+
+    const commissionFactor = 1 - reComRate / 100;
+    if (tpc <= 0 || commissionFactor <= 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted">No scenario data available</td>
+            </tr>
+        `;
+        localizeDOMPhrases(tbody);
+        return;
+    }
+
+    const scenarioTemplate = [
+        { key: 'Conservative', delta: -3 },
+        { key: 'Target', delta: 0 },
+        { key: 'Aggressive', delta: 3 }
+    ];
+
+    const rows = scenarioTemplate.map(({ key, delta }) => {
+        const roiPct = Math.max(0, targetRoi + delta);
+        const targetProfit = tpc * (roiPct / 100);
+        const targetNetSale = tpc + targetProfit;
+        const targetArv = (targetNetSale + closingSell) / commissionFactor;
+
+        return {
+            label: key,
+            arv: targetArv,
+            netSale: targetNetSale,
+            profit: targetProfit,
+            roi: roiPct
+        };
+    });
+
+    tbody.innerHTML = rows.map((row) => `
+        <tr>
+            <td>${row.label}</td>
+            <td>${formatCurrency(row.arv)}</td>
+            <td>${formatCurrency(row.netSale)}</td>
+            <td class="${row.profit >= 0 ? 'profit-positive' : 'profit-negative'}">${formatCurrency(row.profit)}</td>
+            <td>${formatPercentage(row.roi, 2)}</td>
+        </tr>
+    `).join('');
+
+    localizeDOMPhrases(tbody);
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM Loaded - Initializing calculator...');
@@ -1237,6 +1295,8 @@ function updateUI() {
             statusElement.style.color = currentCalculation.dealDecision ? '#4CAF50' : '#F44336';
         }
 
+        updateRoiScenarios(currentCalculation);
+
         console.log('UI updated successfully');
 
     } catch (error) {
@@ -1389,13 +1449,13 @@ function loadProjects() {
                     </span>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-info" onclick="viewProjectDetails(${project.id})" title="Ver">
+                    <button class="btn btn-sm btn-secondary" onclick="viewProjectDetails(${project.id})" title="Ver">
                         <i class="bi bi-eye"></i>
                     </button>
                     <button class="btn btn-sm btn-warning" onclick="openProjectManager(${project.id})" title="Project Manager">
                         <i class="bi bi-tools"></i>
                     </button>
-                    <button class="btn btn-sm btn-primary" onclick="viewProject(${project.id})" title="Editar">
+                    <button class="btn btn-sm btn-warning" onclick="viewProject(${project.id})" title="Editar">
                         <i class="bi bi-pencil-square"></i>
                     </button>
                     <button class="btn btn-sm btn-success" onclick="exportSingleProjectReportPDF(${project.id})" title="Descargar PDF">
@@ -1564,6 +1624,18 @@ let selectedArea = '';
 let selectedCategory = '';
 let selectedSubcategories = [];
 
+const INTERIOR_AREAS = new Set([
+    'Baños',
+    'Cocina',
+    'Pisos',
+    'Pintura',
+    'Eléctrico',
+    'Plomería',
+    'Paredes',
+    'Puertas',
+    'Ventanas'
+]);
+
 // Base de datos de subcategorías
 const subcategoryDatabase = {
     "Baños": {
@@ -1645,6 +1717,64 @@ const subcategoryDatabase = {
     }
 };
 
+function deepClone(value) {
+    return JSON.parse(JSON.stringify(value));
+}
+
+function ensureProjectSubcategoryDatabase() {
+    if (!currentProjectManager?.projectData) return deepClone(subcategoryDatabase);
+    if (!currentProjectManager.projectData.subcategoryDatabase) {
+        currentProjectManager.projectData.subcategoryDatabase = deepClone(subcategoryDatabase);
+    }
+    return currentProjectManager.projectData.subcategoryDatabase;
+}
+
+function ensureProjectAreaCategoryMap() {
+    if (!currentProjectManager?.projectData) return {};
+    if (!currentProjectManager.projectData.areaCategoryMap) {
+        currentProjectManager.projectData.areaCategoryMap = {};
+    }
+    return currentProjectManager.projectData.areaCategoryMap;
+}
+
+function getProjectSubcategoryDatabase() {
+    return ensureProjectSubcategoryDatabase();
+}
+
+function getAvailableAreasByCategory(category) {
+    const db = getProjectSubcategoryDatabase();
+    const areaCategoryMap = ensureProjectAreaCategoryMap();
+    const allAreas = Object.keys(db);
+    const targetCategory = category === 'INTERIOR' ? 'INTERIOR' : 'EXTERIOR';
+
+    return allAreas.filter((area) => {
+        if (areaCategoryMap[area]) {
+            return areaCategoryMap[area] === targetCategory;
+        }
+        const defaultCategory = INTERIOR_AREAS.has(area) ? 'INTERIOR' : 'EXTERIOR';
+        return defaultCategory === targetCategory;
+    });
+}
+
+function syncProjectManagerAfterItemsChange(changedCategory = null) {
+    if (!currentProjectManager) return;
+
+    updateBudget();
+    currentProjectManager.projectData.lastUpdated = new Date().toISOString();
+    localStorage.setItem(`pm_${currentProjectManager.dealId}`, JSON.stringify(currentProjectManager.projectData));
+
+    if (changedCategory) {
+        renderModuleItems(changedCategory);
+    } else {
+        renderModuleItems('INTERIOR');
+        renderModuleItems('EXTERIOR');
+    }
+
+    renderDashboard();
+    renderTimeline();
+    renderBudgetControl();
+}
+
 // Open Project Manager
 function openProjectManager(dealId, options = {}) {
     const project = projects.find(p => p.id === dealId);
@@ -1684,6 +1814,10 @@ function openProjectManager(dealId, options = {}) {
     // Actualizar navegación
     updateNavigation('project-manager');
 
+    // Reafirmar pestaña por defecto al mostrar la vista
+    setProjectManagerDefaultTab('INTERIOR');
+    setTimeout(() => setProjectManagerDefaultTab('INTERIOR'), 0);
+
     if (!options.skipHistory) {
         syncRoute({ section: 'manager', dealId });
     }
@@ -1718,7 +1852,9 @@ function createDefaultProjectManager(projectId) {
             estimatedCompletion: new Date(Date.now() + (6 * 30 * 24 * 60 * 60 * 1000)).toISOString(),
             phases: []
         },
-        items: []
+        items: [],
+        subcategoryDatabase: deepClone(subcategoryDatabase),
+        areaCategoryMap: {}
     };
 }
 
@@ -1752,22 +1888,22 @@ function createProjectManagerSection() {
             <div class="card-header bg-dark">
                 <ul class="nav nav-tabs card-header-tabs" id="pm-tabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="pm-interior-tab" data-bs-toggle="tab" data-bs-target="#pm-interior" type="button" role="tab">
+                        <button class="nav-link active" id="pm-interior-tab" data-bs-toggle="tab" data-bs-target="#pm-interior" type="button" role="tab" aria-selected="true">
                             <i class="bi bi-house-door me-2"></i>Interior
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="pm-exterior-tab" data-bs-toggle="tab" data-bs-target="#pm-exterior" type="button" role="tab">
+                        <button class="nav-link" id="pm-exterior-tab" data-bs-toggle="tab" data-bs-target="#pm-exterior" type="button" role="tab" aria-selected="false">
                             <i class="bi bi-tree me-2"></i>Exterior
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="pm-schedule-tab" data-bs-toggle="tab" data-bs-target="#pm-schedule" type="button" role="tab">
+                        <button class="nav-link" id="pm-schedule-tab" data-bs-toggle="tab" data-bs-target="#pm-schedule" type="button" role="tab" aria-selected="false">
                             <i class="bi bi-calendar3 me-2"></i>Cronograma
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="pm-budget-tab" data-bs-toggle="tab" data-bs-target="#pm-budget" type="button" role="tab">
+                        <button class="nav-link" id="pm-budget-tab" data-bs-toggle="tab" data-bs-target="#pm-budget" type="button" role="tab" aria-selected="false">
                             <i class="bi bi-cash-stack me-2"></i>Presupuesto
                         </button>
                     </li>
@@ -1867,11 +2003,11 @@ function createProjectManagerSection() {
         </div>
 
         <!-- Action Buttons -->
-        <div class="mt-4 text-center">
-            <button class="btn btn-primary" onclick="saveProjectManager()">
+        <div class="mt-4 text-center pm-footer-actions">
+            <button class="btn btn-success" onclick="saveProjectManager()">
                 <i class="bi bi-save me-2"></i>Guardar Progreso
             </button>
-            <button class="btn btn-info" onclick="exportProjectManagerReport()">
+            <button class="btn btn-warning" onclick="exportProjectManagerReport()">
                 <i class="bi bi-file-earmark-pdf me-2"></i>Exportar Reporte
             </button>
             <button class="btn btn-secondary" onclick="backToProjects()">
@@ -1885,6 +2021,8 @@ function createProjectManagerSection() {
 
 // Initialize Project Manager
 function initializeProjectManager(project) {
+    ensureProjectSubcategoryDatabase();
+
     // Render dashboard
     renderDashboard();
     
@@ -1895,6 +2033,43 @@ function initializeProjectManager(project) {
     // Render timeline and budget
     renderTimeline();
     renderBudgetControl();
+
+    // Keep Interior as default tab each time PM opens.
+    setProjectManagerDefaultTab('INTERIOR');
+}
+
+function setProjectManagerDefaultTab(category = 'INTERIOR') {
+    const targetMap = {
+        INTERIOR: { tabId: 'pm-interior-tab', paneSelector: '#pm-interior' },
+        EXTERIOR: { tabId: 'pm-exterior-tab', paneSelector: '#pm-exterior' },
+        SCHEDULE: { tabId: 'pm-schedule-tab', paneSelector: '#pm-schedule' },
+        BUDGET: { tabId: 'pm-budget-tab', paneSelector: '#pm-budget' }
+    };
+
+    const target = targetMap[category] || targetMap.INTERIOR;
+    const tabButton = document.getElementById(target.tabId);
+    if (!tabButton) return;
+
+    if (window.bootstrap && window.bootstrap.Tab) {
+        window.bootstrap.Tab.getOrCreateInstance(tabButton).show();
+        return;
+    }
+
+    // Fallback in case Bootstrap Tab API is unavailable.
+    document.querySelectorAll('#pm-tabs .nav-link').forEach((tab) => {
+        tab.classList.remove('active');
+        tab.setAttribute('aria-selected', 'false');
+    });
+    tabButton.classList.add('active');
+    tabButton.setAttribute('aria-selected', 'true');
+
+    document.querySelectorAll('#pm-tab-content .tab-pane').forEach((pane) => {
+        pane.classList.remove('show', 'active');
+    });
+    const targetPane = document.querySelector(target.paneSelector);
+    if (targetPane) {
+        targetPane.classList.add('show', 'active');
+    }
 }
 
 // Render dashboard
@@ -1971,7 +2146,7 @@ function renderModuleItems(category) {
                 </span>
             </td>
             <td>
-                <button class="btn btn-sm btn-primary" onclick="editProjectItem('${item.id}')" title="Editar">
+                <button class="btn btn-sm btn-warning" onclick="editProjectItem('${item.id}')" title="Editar">
                     <i class="bi bi-pencil"></i>
                 </button>
                 <button class="btn btn-sm btn-danger" onclick="deleteProjectItem('${item.id}')" title="Eliminar">
@@ -2033,9 +2208,16 @@ function renderTimeline() {
     const interiorItems = items.filter(item => item.category === 'INTERIOR');
     const exteriorItems = items.filter(item => item.category === 'EXTERIOR');
     
-    // Calcular fechas estimadas
+    // Calcular fechas estimadas en base a duraciones configuradas por fase
     const startDate = new Date(currentProjectManager.projectData.timeline.startDate);
-    const totalDays = 90; // Estimado 90 días para proyecto completo
+    const timelineMode = 'parallel'; // parallel | sequential
+
+    const interiorTotalDays = calculateCategoryDuration(interiorItems, 'INTERIOR');
+    const exteriorStartOffset = timelineMode === 'sequential' ? interiorTotalDays : 0;
+    const exteriorTotalDays = calculateCategoryDuration(exteriorItems, 'EXTERIOR');
+    const totalDays = timelineMode === 'sequential'
+        ? interiorTotalDays + exteriorTotalDays
+        : Math.max(interiorTotalDays, exteriorStartOffset + exteriorTotalDays);
     
     let html = `
         <div class="row mb-4">
@@ -2098,7 +2280,7 @@ function renderTimeline() {
             <div class="col-md-6">
                 <h6 class="text-gold mb-3">🏡 Fases Exteriores</h6>
                 <div class="timeline-phase">
-                    ${generatePhaseHTML(exteriorItems, 'EXTERIOR', startDate, 45)}
+                    ${generatePhaseHTML(exteriorItems, 'EXTERIOR', startDate, exteriorStartOffset)}
                 </div>
             </div>
         </div>
@@ -2112,6 +2294,15 @@ function renderTimeline() {
     `;
     
     timeline.innerHTML = html;
+}
+
+function calculateCategoryDuration(items, category) {
+    if (!items || items.length === 0) return 0;
+    const uniqueAreas = [...new Set(items.map(item => item.area).filter(Boolean))];
+    return uniqueAreas.reduce((sum, area) => {
+        const phaseDays = Math.max(1, getPhaseDuration(area, category));
+        return sum + phaseDays;
+    }, 0);
 }
 
 // Generate phase HTML
@@ -2134,8 +2325,14 @@ function generatePhaseHTML(items, category, startDate, dayOffset) {
     
     Object.entries(areas).forEach(([area, areaItems]) => {
         const areaStart = new Date(startDate.getTime() + currentDay * 24 * 60 * 60 * 1000);
-        const areaDuration = Math.max(7, areaItems.length * 3); // Mínimo 7 días por área
+        // Use configured phase duration (days/weeks/months) from phase settings.
+        const areaDuration = Math.max(1, getPhaseDuration(area, category));
         const areaEnd = new Date(areaStart.getTime() + areaDuration * 24 * 60 * 60 * 1000);
+        const phaseBudget = getPhaseBudget(areaItems);
+        const phaseActualCost = getPhaseTotalCostValue(area, category);
+        const phaseVariance = phaseBudget - phaseActualCost;
+        const phaseBudgetStatusText = phaseVariance >= 0 ? 'Dentro de presupuesto' : 'Sobre presupuesto';
+        const phaseBudgetStatusClass = phaseVariance >= 0 ? 'text-success' : 'text-danger';
         
         html += `
             <div class="card bg-dark text-white mb-3">
@@ -2164,7 +2361,7 @@ function generatePhaseHTML(items, category, startDate, dayOffset) {
                     <div class="mt-3">
                         <div class="row">
                             <div class="col-md-6">
-                                <button class="btn btn-sm btn-outline-info w-100" onclick="managePhaseSuppliers('${area}', '${category}')">
+                                <button class="btn btn-sm btn-outline-warning w-100" onclick="managePhaseSuppliers('${area}', '${category}')">
                                     <i class="bi bi-people me-1"></i>Proveedores
                                 </button>
                             </div>
@@ -2177,17 +2374,22 @@ function generatePhaseHTML(items, category, startDate, dayOffset) {
                     </div>
                     <div class="mt-3 p-2" style="background: #2c3440; border-radius: 5px; border: 1px solid #d4af37;">
                         <div class="row text-center">
-                            <div class="col-md-4">
+                            <div class="col-6 col-md-3 mb-2 mb-md-0">
                                 <small class="text-muted">Tiempo Estimado</small>
                                 <div class="fw-bold text-warning">${getPhaseDurationDisplay(area, category)}</div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-6 col-md-3 mb-2 mb-md-0">
                                 <small class="text-muted">Proveedores</small>
                                 <div class="fw-bold text-info">${getPhaseSuppliersCount(area, category)}</div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-6 col-md-3">
+                                <small class="text-muted">Presupuesto</small>
+                                <div class="fw-bold text-gold">${formatCurrency(phaseBudget)}</div>
+                            </div>
+                            <div class="col-6 col-md-3">
                                 <small class="text-muted">Costo Total</small>
-                                <div class="fw-bold text-success">${getPhaseTotalCost(area, category)}</div>
+                                <div class="fw-bold ${phaseVariance >= 0 ? 'text-success' : 'text-danger'}">${formatCurrency(phaseActualCost)}</div>
+                                <small class="${phaseBudgetStatusClass}">${phaseBudgetStatusText}</small>
                             </div>
                         </div>
                     </div>
@@ -2710,11 +2912,9 @@ function backToProjects() {
 // Save Project Manager
 function saveProjectManager() {
     if (!currentProjectManager) return;
-    
-    currentProjectManager.projectData.lastUpdated = new Date().toISOString();
-    
+
     try {
-        localStorage.setItem(`pm_${currentProjectManager.dealId}`, JSON.stringify(currentProjectManager.projectData));
+        syncProjectManagerAfterItemsChange();
         showNotification('Progreso del Administrador de Proyecto guardado exitosamente', 'success');
     } catch (error) {
         console.error('Error saving project manager:', error);
@@ -2744,14 +2944,24 @@ function addProjectItem(category) {
     modal.innerHTML = `
         <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
             <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; border: 2px solid #d4af37;">
-                <div style="background: #007bff; color: white; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
-                    <h3 style="margin: 0; color: white;">🔧 Agregar Ítem - ${category === 'INTERIOR' ? 'Interior' : 'Exterior'}</h3>
-                    <button onclick="closeItemModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+                <div style="background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%); color: #0a0e14; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h3 style="margin: 0; color: #0a0e14;">🔧 Agregar Ítem - ${category === 'INTERIOR' ? 'Interior' : 'Exterior'}</h3>
+                    <button onclick="closeItemModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: #0a0e14; font-size: 24px; cursor: pointer;">×</button>
                 </div>
                 
                 <form id="pm-item-form">
                     <div class="mb-3">
-                        <label style="color: #d4af37;">Área/Subcategoría</label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <label style="color: #d4af37; margin: 0;">Área/Subcategoría</label>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="promptAddArea(false)">
+                                    <i class="bi bi-plus-square me-1"></i>Nueva área
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="promptAddSubcategory(false)">
+                                    <i class="bi bi-plus-circle me-1"></i>Nueva subcategoría
+                                </button>
+                            </div>
+                        </div>
                         <select class="form-control" id="item-area-search" onchange="selectArea(this.value)">
                             <option value="">Seleccionar...</option>
                             ${getSubcategoryOptions(category)}
@@ -2806,13 +3016,13 @@ function addProjectItem(category) {
                     <div class="row mb-3">
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Materiales</label>
-                            <input type="number" class="form-control" id="item-materials" value="0" step="100" readonly>
-                            <small class="text-muted">Suma automática de subcategorías</small>
+                            <input type="number" class="form-control" id="item-materials" value="0" step="100">
+                            <small class="text-muted">Manual o suma automática de subcategorías</small>
                         </div>
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Mano de Obra</label>
-                            <input type="number" class="form-control" id="item-labor" value="0" step="100" readonly>
-                            <small class="text-muted">Suma automática de subcategorías</small>
+                            <input type="number" class="form-control" id="item-labor" value="0" step="100">
+                            <small class="text-muted">Manual o suma automática de subcategorías</small>
                         </div>
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Otros Costos</label>
@@ -2849,30 +3059,8 @@ function addProjectItem(category) {
 
 // Get subcategory options
 function getSubcategoryOptions(category) {
-    if (category === 'INTERIOR') {
-        return `
-            <option value="Baños">Baños</option>
-            <option value="Cocina">Cocina</option>
-            <option value="Pisos">Pisos</option>
-            <option value="Pintura">Pintura</option>
-            <option value="Eléctrico">Eléctrico</option>
-            <option value="Plomería">Plomería</option>
-            <option value="Paredes">Paredes</option>
-            <option value="Puertas">Puertas</option>
-            <option value="Ventanas">Ventanas</option>
-        `;
-    } else {
-        return `
-            <option value="Techo">Techo</option>
-            <option value="Cimientos">Cimientos</option>
-            <option value="Fachada">Fachada</option>
-            <option value="Paisajismo">Paisajismo</option>
-            <option value="Garaje">Garaje</option>
-            <option value="Cerca">Cerca</option>
-            <option value="Entrada">Entrada</option>
-            <option value="Drenaje">Drenaje</option>
-        `;
-    }
+    const areas = getAvailableAreasByCategory(category);
+    return areas.map((area) => `<option value="${area}">${area}</option>`).join('');
 }
 
 // Select area
@@ -2886,7 +3074,9 @@ function updateSubcategories(area) {
     const subcategoryRow = document.getElementById('subcategory-row');
     const subcategoryOptions = document.getElementById('subcategory-options');
     
-    if (!area || !subcategoryDatabase[area]) {
+    const db = getProjectSubcategoryDatabase();
+
+    if (!area || !db[area]) {
         subcategoryRow.style.display = 'none';
         subcategoryOptions.innerHTML = '';
         return;
@@ -2894,53 +3084,50 @@ function updateSubcategories(area) {
     
     subcategoryRow.style.display = 'block';
     
-    const subcategories = subcategoryDatabase[area];
+    const subcategories = db[area];
     let html = '';
     
     for (const [name, costs] of Object.entries(subcategories)) {
         const total = costs.materials + costs.labor;
         const safeName = name.replace(/[^a-zA-Z0-9]/g, '');
         html += `
-            <div class="form-check mb-2" style="padding: 8px; border: 1px solid #444; border-radius: 5px; cursor: pointer;">
-                <label class="form-check-label" style="cursor: pointer; width: 100%;">
-                    <div class="row align-items-center">
-                        <div class="col-md-5">
-                            <input type="checkbox" class="form-check-input" id="sub-${safeName}" onchange="toggleSubcategory('${name}', ${costs.materials}, ${costs.labor}, '${costs.unit}', this.checked)">
-                            <span style="font-weight: normal;">${name}</span>
+            <div class="pm-sub-item">
+                <div class="pm-sub-item-top">
+                    <label class="pm-sub-item-name" for="sub-${safeName}">
+                        <input type="checkbox" class="form-check-input" id="sub-${safeName}" onchange="toggleSubcategory('${name}', ${costs.materials}, ${costs.labor}, '${costs.unit}', this.checked)">
+                        <span>${name}</span>
+                    </label>
+
+                    <div class="pm-sub-item-costs">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Mat</span>
+                            <input type="number" class="form-control form-control-sm" value="${costs.materials}" step="10" onchange="updateSubcategoryCost('${name}', 'materials', this.value)">
                         </div>
-                        <div class="col-md-2">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text" style="font-size: 11px;">Mat:</span>
-                                <input type="number" class="form-control form-control-sm" value="${costs.materials}" step="10" style="width: 70px;" onchange="updateSubcategoryCost('${name}', 'materials', this.value)">
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text" style="font-size: 11px;">MO:</span>
-                                <input type="number" class="form-control form-control-sm" value="${costs.labor}" step="10" style="width: 70px;" onchange="updateSubcategoryCost('${name}', 'labor', this.value)">
-                            </div>
-                        </div>
-                        <div class="col-md-3 text-end">
-                            <small class="text-success">Total: <span id="total-${safeName}">${formatCurrency(total)}</span></small>
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteSubcategory('${name}', event)" title="Eliminar">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">MO</span>
+                            <input type="number" class="form-control form-control-sm" value="${costs.labor}" step="10" onchange="updateSubcategoryCost('${name}', 'labor', this.value)">
                         </div>
                     </div>
-                    <div class="row mt-2">
-                        <div class="col-md-12">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text" style="font-size: 11px;">Tipo:</span>
-                                <select class="form-control form-control-sm" id="worktype-${safeName}" onchange="updateWorkType('${name}', this.value)">
-                                    <option value="REPAIR">Reparar</option>
-                                    <option value="REPLACE">Reemplazar</option>
-                                    <option value="NEW">Nuevo</option>
-                                    <option value="UPGRADE">Mejorar</option>
-                                </select>
-                            </div>
-                        </div>
+
+                    <div class="pm-sub-item-meta">
+                        <small>Total: <span id="total-${safeName}">${formatCurrency(total)}</span></small>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteSubcategory('${name}', event)" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
-                </label>
+                </div>
+
+                <div class="pm-sub-item-bottom">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">Tipo</span>
+                        <select class="form-control form-control-sm" id="worktype-${safeName}" onchange="updateWorkType('${name}', this.value)">
+                            <option value="REPAIR">Reparar</option>
+                            <option value="REPLACE">Reemplazar</option>
+                            <option value="NEW">Nuevo</option>
+                            <option value="UPGRADE">Mejorar</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -2976,19 +3163,17 @@ function toggleSubcategory(name, materials, labor, unit, isChecked) {
             description.value = selectedSubcategories.map(sub => sub.name).join(', ');
         }
     } else if (selectedSubcategories.length === 0) {
-        // Limpiar campos si no hay selección
-        document.getElementById('item-materials').value = 0;
-        document.getElementById('item-labor').value = 0;
-        document.getElementById('item-unit').value = 'EACH';
-        document.getElementById('item-description').value = '';
+        // Si ya no hay subcategorías, conservar valores manuales que el usuario haya escrito
+        if (!document.getElementById('item-unit').value) {
+            document.getElementById('item-unit').value = 'EACH';
+        }
     }
 }
 
 // Update automatic totals
 function updateAutomaticTotals() {
     if (selectedSubcategories.length === 0) {
-        document.getElementById('item-materials').value = 0;
-        document.getElementById('item-labor').value = 0;
+        // Modo manual: no sobreescribir campos de costo
         return;
     }
     
@@ -3016,13 +3201,14 @@ function updateWorkType(name, workType) {
 
 // Update subcategory cost
 function updateSubcategoryCost(name, costType, value) {
-    if (!selectedArea || !subcategoryDatabase[selectedArea]) return;
+    const db = getProjectSubcategoryDatabase();
+    if (!selectedArea || !db[selectedArea]) return;
     
     const numValue = parseFloat(value) || 0;
-    subcategoryDatabase[selectedArea][name][costType] = numValue;
+    db[selectedArea][name][costType] = numValue;
     
     // Actualizar total en la subcategoría
-    const costs = subcategoryDatabase[selectedArea][name];
+    const costs = db[selectedArea][name];
     const total = costs.materials + costs.labor;
     const totalElement = document.getElementById(`total-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (totalElement) {
@@ -3042,23 +3228,230 @@ function deleteSubcategory(name, event) {
     event.stopPropagation();
     
     if (confirm(`¿Estás seguro de que quieres eliminar "${name}"?`)) {
-        delete subcategoryDatabase[selectedArea][name];
+        const db = getProjectSubcategoryDatabase();
+        delete db[selectedArea][name];
         updateSubcategories(selectedArea);
     }
 }
 
+function showPmFormDialog({ title, subtitle = '', fields = [], confirmText = 'Guardar', cancelText = 'Cancelar' }) {
+    return new Promise((resolve) => {
+        const existing = document.getElementById('pm-inline-dialog');
+        if (existing) existing.remove();
+
+        const dialog = document.createElement('div');
+        dialog.id = 'pm-inline-dialog';
+        dialog.innerHTML = `
+            <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 10050; display: flex; align-items: center; justify-content: center; padding: 16px;">
+                <div style="width: 100%; max-width: 520px; background: #1a1f2e; border: 2px solid #d4af37; border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,0.45);">
+                    <div style="background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%); color: #000000; padding: 14px 18px; border-radius: 10px 10px 0 0;">
+                        <h5 style="margin: 0; font-weight: 800; color: #000000;">${title}</h5>
+                        ${subtitle ? `<small style="font-weight: 600; color: #000000;">${subtitle}</small>` : ''}
+                    </div>
+                    <div style="padding: 16px 18px 18px 18px;">
+                        ${fields.map((field) => `
+                            <div style="margin-bottom: 12px;">
+                                <label for="pm-dialog-${field.id}" style="display: block; color: #d4af37; font-weight: 700; margin-bottom: 6px;">${field.label}</label>
+                                <input id="pm-dialog-${field.id}" type="${field.type || 'text'}" value="${field.value || ''}" placeholder="${field.placeholder || ''}" class="form-control">
+                            </div>
+                        `).join('')}
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+                            <button type="button" id="pm-dialog-cancel" class="btn btn-secondary">${cancelText}</button>
+                            <button type="button" id="pm-dialog-confirm" class="btn btn-warning">${confirmText}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(dialog);
+
+        const closeDialog = (result) => {
+            dialog.remove();
+            resolve(result);
+        };
+
+        const confirmBtn = dialog.querySelector('#pm-dialog-confirm');
+        const cancelBtn = dialog.querySelector('#pm-dialog-cancel');
+        const firstInput = dialog.querySelector('input');
+        if (firstInput) firstInput.focus();
+
+        confirmBtn?.addEventListener('click', () => {
+            const values = {};
+            fields.forEach((field) => {
+                const input = dialog.querySelector(`#pm-dialog-${field.id}`);
+                values[field.id] = input ? input.value : '';
+            });
+            closeDialog(values);
+        });
+
+        cancelBtn?.addEventListener('click', () => closeDialog(null));
+        dialog.addEventListener('click', (event) => {
+            if (event.target === dialog.firstElementChild) {
+                closeDialog(null);
+            }
+        });
+    });
+}
+
+function showPmConfirmDialog({ title, message, confirmText = 'Aceptar', cancelText = 'Cancelar' }) {
+    return new Promise((resolve) => {
+        const existing = document.getElementById('pm-inline-confirm-dialog');
+        if (existing) existing.remove();
+
+        const dialog = document.createElement('div');
+        dialog.id = 'pm-inline-confirm-dialog';
+        dialog.innerHTML = `
+            <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 10060; display: flex; align-items: center; justify-content: center; padding: 16px;">
+                <div style="width: 100%; max-width: 460px; background: #1a1f2e; border: 2px solid #d4af37; border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,0.45);">
+                    <div style="padding: 18px;">
+                        <h5 style="margin: 0 0 8px 0; color: #f1d592; font-weight: 800;">${title}</h5>
+                        <p style="margin: 0 0 14px 0; color: #d6dee8;">${message}</p>
+                        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                            <button type="button" id="pm-confirm-cancel" class="btn btn-secondary">${cancelText}</button>
+                            <button type="button" id="pm-confirm-ok" class="btn btn-warning">${confirmText}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(dialog);
+
+        const closeDialog = (result) => {
+            dialog.remove();
+            resolve(result);
+        };
+
+        dialog.querySelector('#pm-confirm-cancel')?.addEventListener('click', () => closeDialog(false));
+        dialog.querySelector('#pm-confirm-ok')?.addEventListener('click', () => closeDialog(true));
+        dialog.addEventListener('click', (event) => {
+            if (event.target === dialog.firstElementChild) {
+                closeDialog(false);
+            }
+        });
+    });
+}
+
+async function promptAddArea(isEditMode = false) {
+    const db = getProjectSubcategoryDatabase();
+    const areaCategoryMap = ensureProjectAreaCategoryMap();
+    const targetCategory = selectedCategory === 'INTERIOR' ? 'INTERIOR' : 'EXTERIOR';
+
+    if (!selectedCategory) {
+        showNotification('No se pudo detectar categoría (Interior/Exterior)', 'error');
+        return;
+    }
+
+    const areaResult = await showPmFormDialog({
+        title: 'Nueva área',
+        subtitle: `Categoría: ${targetCategory === 'INTERIOR' ? 'Interior' : 'Exterior'}`,
+        fields: [
+            { id: 'name', label: 'Nombre del área', placeholder: 'Ej: Garaje' }
+        ],
+        confirmText: 'Crear área'
+    });
+    if (!areaResult) return;
+
+    const areaName = String(areaResult.name || '').trim();
+    if (!areaName) {
+        showNotification('El nombre del área es obligatorio', 'error');
+        return;
+    }
+
+    const existingArea = Object.keys(db).find((area) => area.toLowerCase() === areaName.toLowerCase());
+    if (existingArea) {
+        showNotification('Esa área ya existe', 'error');
+        return;
+    }
+
+    db[areaName] = {};
+    areaCategoryMap[areaName] = targetCategory;
+
+    const selectId = isEditMode ? 'edit-item-area-search' : 'item-area-search';
+    const selectEl = document.getElementById(selectId);
+    if (selectEl) {
+        selectEl.innerHTML = `
+            <option value="">Seleccionar...</option>
+            ${getSubcategoryOptions(selectedCategory)}
+        `;
+        selectEl.value = areaName;
+    }
+
+    selectedArea = areaName;
+    if (isEditMode) {
+        updateEditSubcategories(areaName);
+    } else {
+        updateSubcategories(areaName);
+    }
+
+    showNotification(`Área "${areaName}" agregada`, 'success');
+
+    const createFirstSub = await showPmConfirmDialog({
+        title: 'Área creada',
+        message: '¿Quieres crear una primera subcategoría en esta área?',
+        confirmText: 'Sí, crear',
+        cancelText: 'Ahora no'
+    });
+    if (createFirstSub) {
+        await promptAddSubcategory(isEditMode);
+    }
+}
+
+async function promptAddSubcategory(isEditMode = false) {
+    const db = getProjectSubcategoryDatabase();
+    if (!selectedArea || !db[selectedArea]) {
+        showNotification('Primero selecciona un área para agregar subcategorías', 'info');
+        return;
+    }
+
+    const subcategoryResult = await showPmFormDialog({
+        title: 'Nueva subcategoría',
+        subtitle: `Área: ${selectedArea}`,
+        fields: [
+            { id: 'name', label: 'Nombre', placeholder: 'Ej: Instalar drywall' },
+            { id: 'materials', label: 'Costo de materiales ($)', type: 'number', value: '0' },
+            { id: 'labor', label: 'Costo de mano de obra ($)', type: 'number', value: '0' }
+        ],
+        confirmText: 'Agregar subcategoría'
+    });
+    if (!subcategoryResult) return;
+
+    const subcategoryName = String(subcategoryResult.name || '').trim();
+    if (!subcategoryName) {
+        showNotification('El nombre de la subcategoría es obligatorio', 'error');
+        return;
+    }
+
+    const existingName = Object.keys(db[selectedArea]).find(
+        (existing) => existing.toLowerCase() === subcategoryName.toLowerCase()
+    );
+    if (existingName) {
+        showNotification('Esa subcategoría ya existe en esta área', 'error');
+        return;
+    }
+
+    const materials = Math.max(0, parseFloat(String(subcategoryResult.materials || '0').replace(',', '.')) || 0);
+    const labor = Math.max(0, parseFloat(String(subcategoryResult.labor || '0').replace(',', '.')) || 0);
+
+    db[selectedArea][subcategoryName] = {
+        materials,
+        labor,
+        unit: 'EACH',
+        workType: 'REPAIR'
+    };
+
+    if (isEditMode) {
+        updateEditSubcategories(selectedArea);
+    } else {
+        updateSubcategories(selectedArea);
+    }
+
+    showNotification(`Subcategoría "${subcategoryName}" agregada`, 'success');
+}
+
 // Save project item
 function saveProjectItem(category) {
-    if (!selectedArea) {
-        alert('Por favor selecciona un área primero');
-        return;
-    }
-    
-    if (selectedSubcategories.length === 0) {
-        alert('Por favor selecciona al menos una subcategoría');
-        return;
-    }
-    
     if (!currentProjectManager) {
         alert('Error: No hay un proyecto activo');
         return;
@@ -3069,36 +3462,40 @@ function saveProjectItem(category) {
     const labor = parseFloat(document.getElementById('item-labor').value) || 0;
     const other = parseFloat(document.getElementById('item-other').value) || 0;
     const markup = parseFloat(document.getElementById('item-markup').value) || 0;
+    const quantity = Math.max(1, parseInt(document.getElementById('item-quantity').value, 10) || 1);
     
     console.log('Form values - materials:', materials, 'labor:', labor, 'other:', other, 'markup:', markup);
     
-    const subtotal = materials + labor + other;
+    const subtotal = (materials + labor + other) * quantity;
     const markupAmount = subtotal * (markup / 100);
     const totalEstimated = subtotal + markupAmount;
     
     console.log('Calculated - subtotal:', subtotal, 'markupAmount:', markupAmount, 'totalEstimated:', totalEstimated);
     
+    const defaultArea = category === 'INTERIOR' ? 'General Interior' : 'General Exterior';
+    const resolvedArea = selectedArea || defaultArea;
+
     // Create description
     let description = document.getElementById('item-description').value;
     if (selectedSubcategories.length > 1 && (!description || description === '')) {
         description = selectedSubcategories.map(sub => sub.name).join(', ');
     } else if (!description || description === '') {
-        description = 'Trabajo en ' + selectedArea;
+        description = 'Trabajo en ' + resolvedArea;
     }
     
     // Get work type from first selected subcategory
     const workType = selectedSubcategories.length > 0 ? 
-        (selectedSubcategories[0].workType || 'REPAIR') : 'REPAIR';
+        (selectedSubcategories[0].workType || 'REPAIR') : 'MANUAL';
     
     // Create new item
     const newItem = {
         id: Date.now().toString(),
         category: category,
-        area: selectedArea,
+        area: resolvedArea,
         description: description,
         workType: workType,
         priority: document.getElementById('item-priority').value,
-        quantity: parseInt(document.getElementById('item-quantity').value) || 1,
+        quantity: quantity,
         unit: document.getElementById('item-unit').value || 'EACH',
         materialsCost: materials,
         laborCost: labor,
@@ -3120,30 +3517,17 @@ function saveProjectItem(category) {
     }
     
     currentProjectManager.projectData.items.push(newItem);
-    currentProjectManager.projectData.lastUpdated = new Date().toISOString();
     
     console.log('Items after adding:', currentProjectManager.projectData.items.length);
     
-    // Update budget
-    updateBudget();
-    
-    // Save to localStorage
     try {
-        localStorage.setItem(`pm_${currentProjectManager.dealId}`, JSON.stringify(currentProjectManager.projectData));
+        syncProjectManagerAfterItemsChange(category);
         console.log('Saved to localStorage successfully');
     } catch (error) {
         console.error('Error saving to localStorage:', error);
         alert('Error al guardar el proyecto');
         return;
     }
-    
-    // Reload table
-    renderModuleItems(category);
-    
-    // Update ALL sections automatically
-    renderDashboard();
-    renderTimeline();
-    renderBudgetControl();
     
     // Close modal
     closeItemModal();
@@ -3171,9 +3555,6 @@ function updateBudget() {
         used: totalActual,
         remaining: totalEstimated - totalActual
     };
-    
-    // Re-render dashboard
-    renderDashboard();
 }
 
 // Close modal
@@ -3203,7 +3584,7 @@ function editProjectItem(itemId) {
     // Set variables for the form
     selectedArea = item.area;
     selectedCategory = item.category;
-    selectedSubcategories = item.subcategories || [];
+    selectedSubcategories = [];
     editingItemId = itemId; // Track which item we're editing
     
     // Create modal with item data
@@ -3212,14 +3593,24 @@ function editProjectItem(itemId) {
     modal.innerHTML = `
         <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
             <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; border: 2px solid #d4af37;">
-                <div style="background: #ffc107; color: black; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
-                    <h3 style="margin: 0; color: black;">✏️ Editar Ítem - ${item.category === 'INTERIOR' ? 'Interior' : 'Exterior'}</h3>
-                    <button onclick="closeEditItemModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: black; font-size: 24px; cursor: pointer;">×</button>
+                <div style="background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%); color: #0a0e14; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h3 style="margin: 0; color: #0a0e14;">✏️ Editar Ítem - ${item.category === 'INTERIOR' ? 'Interior' : 'Exterior'}</h3>
+                    <button onclick="closeEditItemModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: #0a0e14; font-size: 24px; cursor: pointer;">×</button>
                 </div>
                 
                 <form id="pm-item-edit-form">
                     <div class="mb-3">
-                        <label style="color: #d4af37;">Área/Subcategoría</label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <label style="color: #d4af37; margin: 0;">Área/Subcategoría</label>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                                <button type="button" class="btn btn-sm btn-outline-info" onclick="promptAddArea(true)">
+                                    <i class="bi bi-plus-square me-1"></i>Nueva área
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="promptAddSubcategory(true)">
+                                    <i class="bi bi-plus-circle me-1"></i>Nueva subcategoría
+                                </button>
+                            </div>
+                        </div>
                         <select class="form-control" id="edit-item-area-search" onchange="selectEditArea(this.value)">
                             <option value="">Seleccionar...</option>
                             ${getSubcategoryOptions(item.category)}
@@ -3349,7 +3740,9 @@ function updateEditSubcategories(area) {
     const subcategoryRow = document.getElementById('edit-subcategory-row');
     const subcategoryOptions = document.getElementById('edit-subcategory-options');
     
-    if (!area || !subcategoryDatabase[area]) {
+    const db = getProjectSubcategoryDatabase();
+
+    if (!area || !db[area]) {
         subcategoryRow.style.display = 'none';
         subcategoryOptions.innerHTML = '';
         return;
@@ -3357,53 +3750,50 @@ function updateEditSubcategories(area) {
     
     subcategoryRow.style.display = 'block';
     
-    const subcategories = subcategoryDatabase[area];
+    const subcategories = db[area];
     let html = '';
     
     for (const [name, costs] of Object.entries(subcategories)) {
         const total = costs.materials + costs.labor;
         const safeName = name.replace(/[^a-zA-Z0-9]/g, '');
         html += `
-            <div class="form-check mb-2" style="padding: 8px; border: 1px solid #444; border-radius: 5px; cursor: pointer;">
-                <label class="form-check-label" style="cursor: pointer; width: 100%;">
-                    <div class="row align-items-center">
-                        <div class="col-md-5">
-                            <input type="checkbox" class="form-check-input" id="edit-sub-${safeName}" onchange="toggleEditSubcategory('${name}', ${costs.materials}, ${costs.labor}, '${costs.unit}', this.checked)">
-                            <span style="font-weight: normal;">${name}</span>
+            <div class="pm-sub-item">
+                <div class="pm-sub-item-top">
+                    <label class="pm-sub-item-name" for="edit-sub-${safeName}">
+                        <input type="checkbox" class="form-check-input" id="edit-sub-${safeName}" onchange="toggleEditSubcategory('${name}', ${costs.materials}, ${costs.labor}, '${costs.unit}', this.checked)">
+                        <span>${name}</span>
+                    </label>
+
+                    <div class="pm-sub-item-costs">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">Mat</span>
+                            <input type="number" class="form-control form-control-sm" value="${costs.materials}" step="10" onchange="updateEditSubcategoryCost('${name}', 'materials', this.value)">
                         </div>
-                        <div class="col-md-2">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text" style="font-size: 11px;">Mat:</span>
-                                <input type="number" class="form-control form-control-sm" value="${costs.materials}" step="10" style="width: 70px;" onchange="updateEditSubcategoryCost('${name}', 'materials', this.value)">
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text" style="font-size: 11px;">MO:</span>
-                                <input type="number" class="form-control form-control-sm" value="${costs.labor}" step="10" style="width: 70px;" onchange="updateEditSubcategoryCost('${name}', 'labor', this.value)">
-                            </div>
-                        </div>
-                        <div class="col-md-3 text-end">
-                            <small class="text-success">Total: <span id="edit-total-${safeName}">${formatCurrency(total)}</span></small>
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="deleteEditSubcategory('${name}', event)" title="Eliminar">
-                                <i class="bi bi-trash"></i>
-                            </button>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">MO</span>
+                            <input type="number" class="form-control form-control-sm" value="${costs.labor}" step="10" onchange="updateEditSubcategoryCost('${name}', 'labor', this.value)">
                         </div>
                     </div>
-                    <div class="row mt-2">
-                        <div class="col-md-12">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text" style="font-size: 11px;">Tipo:</span>
-                                <select class="form-control form-control-sm" id="edit-worktype-${safeName}" onchange="updateEditWorkType('${name}', this.value)">
-                                    <option value="REPAIR">Reparar</option>
-                                    <option value="REPLACE">Reemplazar</option>
-                                    <option value="NEW">Nuevo</option>
-                                    <option value="UPGRADE">Mejorar</option>
-                                </select>
-                            </div>
-                        </div>
+
+                    <div class="pm-sub-item-meta">
+                        <small>Total: <span id="edit-total-${safeName}">${formatCurrency(total)}</span></small>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteEditSubcategory('${name}', event)" title="Eliminar">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
-                </label>
+                </div>
+
+                <div class="pm-sub-item-bottom">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text">Tipo</span>
+                        <select class="form-control form-control-sm" id="edit-worktype-${safeName}" onchange="updateEditWorkType('${name}', this.value)">
+                            <option value="REPAIR">Reparar</option>
+                            <option value="REPLACE">Reemplazar</option>
+                            <option value="NEW">Nuevo</option>
+                            <option value="UPGRADE">Mejorar</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -3434,8 +3824,7 @@ function toggleEditSubcategory(name, materials, labor, unit, isChecked) {
 // Update edit automatic totals
 function updateEditAutomaticTotals() {
     if (selectedSubcategories.length === 0) {
-        document.getElementById('edit-item-materials').value = 0;
-        document.getElementById('edit-item-labor').value = 0;
+        // Modo manual: no sobreescribir campos de costo en edición
         return;
     }
     
@@ -3463,13 +3852,14 @@ function updateEditWorkType(name, workType) {
 
 // Update edit subcategory cost
 function updateEditSubcategoryCost(name, costType, value) {
-    if (!selectedArea || !subcategoryDatabase[selectedArea]) return;
+    const db = getProjectSubcategoryDatabase();
+    if (!selectedArea || !db[selectedArea]) return;
     
     const numValue = parseFloat(value) || 0;
-    subcategoryDatabase[selectedArea][name][costType] = numValue;
+    db[selectedArea][name][costType] = numValue;
     
     // Actualizar total en la subcategoría
-    const costs = subcategoryDatabase[selectedArea][name];
+    const costs = db[selectedArea][name];
     const total = costs.materials + costs.labor;
     const totalElement = document.getElementById(`edit-total-${name.replace(/[^a-zA-Z0-9]/g, '')}`);
     if (totalElement) {
@@ -3489,7 +3879,8 @@ function deleteEditSubcategory(name, event) {
     event.stopPropagation();
     
     if (confirm(`¿Estás seguro de que quieres eliminar "${name}"?`)) {
-        delete subcategoryDatabase[selectedArea][name];
+        const db = getProjectSubcategoryDatabase();
+        delete db[selectedArea][name];
         updateEditSubcategories(selectedArea);
     }
 }
@@ -3518,10 +3909,11 @@ function updateProjectItem(category) {
     const other = parseFloat(document.getElementById('edit-item-other').value) || 0;
     const markup = parseFloat(document.getElementById('edit-item-markup').value) || 0;
     const actual = parseFloat(document.getElementById('edit-item-actual').value) || 0;
+    const quantity = Math.max(1, parseInt(document.getElementById('edit-item-quantity').value, 10) || 1);
     
     console.log('Edit form values - materials:', materials, 'labor:', labor, 'other:', other, 'markup:', markup, 'actual:', actual);
     
-    const subtotal = materials + labor + other;
+    const subtotal = (materials + labor + other) * quantity;
     const markupAmount = subtotal * (markup / 100);
     const totalEstimated = subtotal + markupAmount;
     
@@ -3535,14 +3927,17 @@ function updateProjectItem(category) {
     }
     
     // Update item data
+    const fallbackArea = category === 'INTERIOR' ? 'General Interior' : 'General Exterior';
+    const resolvedArea = selectedArea || currentProjectManager.projectData.items[itemIndex].area || fallbackArea;
+
     const updatedItem = {
         ...currentProjectManager.projectData.items[itemIndex],
-        area: selectedArea,
+        area: resolvedArea,
         description: document.getElementById('edit-item-description').value,
         workType: selectedSubcategories.length > 0 ? 
-            (selectedSubcategories[0].workType || 'REPAIR') : 'REPAIR',
+            (selectedSubcategories[0].workType || 'REPAIR') : 'MANUAL',
         priority: document.getElementById('edit-item-priority').value,
-        quantity: parseInt(document.getElementById('edit-item-quantity').value) || 1,
+        quantity: quantity,
         unit: document.getElementById('edit-item-unit').value || 'EACH',
         materialsCost: materials,
         laborCost: labor,
@@ -3558,25 +3953,18 @@ function updateProjectItem(category) {
     
     // Replace the item
     currentProjectManager.projectData.items[itemIndex] = updatedItem;
-    currentProjectManager.projectData.lastUpdated = new Date().toISOString();
     
     console.log('Updated item:', updatedItem);
     
     // Save to localStorage
     try {
-        localStorage.setItem(`pm_${currentProjectManager.dealId}`, JSON.stringify(currentProjectManager.projectData));
+        syncProjectManagerAfterItemsChange(category);
         console.log('Updated item saved to localStorage successfully');
     } catch (error) {
         console.error('Error saving updated item to localStorage:', error);
         alert('Error al guardar el ítem actualizado');
         return;
     }
-    
-    // Update ALL sections automatically
-    renderModuleItems(category);
-    renderDashboard();
-    renderTimeline();
-    renderBudgetControl();
     
     // Close modal
     closeEditItemModal();
@@ -3596,12 +3984,10 @@ function deleteProjectItem(itemId) {
     if (confirm('¿Estás seguro de que quieres eliminar este ítem?')) {
         if (!currentProjectManager) return;
         
+        const deletedItem = currentProjectManager.projectData.items.find(item => item.id === itemId);
         currentProjectManager.projectData.items = currentProjectManager.projectData.items.filter(item => item.id !== itemId);
-        
-        // Save and reload
-        saveProjectManager();
-        renderModuleItems('INTERIOR');
-        renderModuleItems('EXTERIOR');
+
+        syncProjectManagerAfterItemsChange(deletedItem?.category || null);
         
         showNotification('Ítem eliminado exitosamente', 'success');
     }
@@ -3617,9 +4003,9 @@ function viewProjectDetails(projectId) {
     const modalHTML = `
         <div id="dealModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
             <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; border: 2px solid #d4af37;">
-                <div style="background: #007bff; color: white; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
-                    <h3 style="margin: 0; color: white;">👁️ Detalles del Deal: ${project.projectName || 'Sin nombre'}</h3>
-                    <button onclick="closeDealModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+                <div style="background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%); color: #0a0e14; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h3 style="margin: 0; color: #0a0e14;">👁️ Detalles del Deal: ${project.projectName || 'Sin nombre'}</h3>
+                    <button onclick="closeDealModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: #0a0e14; font-size: 24px; cursor: pointer;">×</button>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
@@ -3644,8 +4030,8 @@ function viewProjectDetails(projectId) {
                 
                 <!-- Botones de acción -->
                 <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #d4af37;">
-                    <button onclick="viewProject(${project.id})" style="background: #007bff; color: white; border: none; padding: 10px 20px; margin: 0 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">✏️ Editar Deal</button>
-                    <button onclick="exportSingleProjectReportPDF(${project.id})" style="background: #28a745; color: white; border: none; padding: 10px 20px; margin: 0 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">📄 Descargar PDF</button>
+                    <button onclick="viewProject(${project.id})" style="background: linear-gradient(135deg, #f0b429, #d49d1f); color: #111827; border: none; padding: 10px 20px; margin: 0 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">✏️ Editar Deal</button>
+                    <button onclick="exportSingleProjectReportPDF(${project.id})" style="background: linear-gradient(135deg, #198754, #20a06e); color: white; border: none; padding: 10px 20px; margin: 0 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">📄 Descargar PDF</button>
                     <button onclick="closeDealModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; margin: 0 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">❌ Cerrar</button>
                 </div>
             </div>
@@ -3673,16 +4059,16 @@ function managePhaseSuppliers(area, category) {
     modal.id = 'phase-suppliers-modal';
     modal.innerHTML = `
         <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-            <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto; border: 2px solid #17a2b8;">
-                <div style="background: #17a2b8; color: white; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 900px; width: 90%; max-height: 80vh; overflow-y: auto; border: 2px solid #d4af37;">
+                <div style="background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%); color: #0a0e14; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
                     <h3 style="margin: 0; color: white;">
                         <i class="bi bi-people me-2"></i>Proveedores - ${area}
                     </h3>
-                    <button onclick="closePhaseSuppliersModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+                    <button onclick="closePhaseSuppliersModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: #0a0e14; font-size: 24px; cursor: pointer;">×</button>
                 </div>
                 
                 <div class="mb-3">
-                    <label style="color: #17a2b8;">Tiempo Estimado para la Fase</label>
+                    <label style="color: #d4af37;">Tiempo Estimado para la Fase</label>
                     <div class="row">
                         <div class="col-md-4">
                             <input type="number" class="form-control" id="phase-duration" value="${getPhaseDuration(area, category)}" min="1" placeholder="Número">
@@ -3704,7 +4090,7 @@ function managePhaseSuppliers(area, category) {
                 </div>
                 
                 <div class="mb-3">
-                    <label style="color: #17a2b8;">Proveedores Asignados</label>
+                    <label style="color: #d4af37;">Proveedores Asignados</label>
                     <div class="mb-2">
                         <div class="row">
                             <div class="col-md-8">
@@ -3715,7 +4101,7 @@ function managePhaseSuppliers(area, category) {
                                 <small class="text-muted">Busca y selecciona un proveedor guardado previamente</small>
                             </div>
                             <div class="col-md-4">
-                                <button class="btn btn-sm btn-outline-info w-100" onclick="addNewSupplier()">
+                                <button class="btn btn-sm btn-outline-warning w-100" onclick="addNewSupplier()">
                                     <i class="bi bi-plus-circle me-1"></i>Nuevo Proveedor
                                 </button>
                             </div>
@@ -3748,13 +4134,13 @@ function managePhaseSuppliers(area, category) {
                             </div>
                         `).join('')}
                     </div>
-                    <button class="btn btn-sm btn-outline-info mt-2" onclick="addSupplier()">
+                    <button class="btn btn-sm btn-outline-warning mt-2" onclick="addSupplier()">
                         <i class="bi bi-plus-circle me-1"></i>Agregar Proveedor Manual
                     </button>
                 </div>
                 
                 <div class="text-center">
-                    <button class="btn btn-info" onclick="savePhaseSuppliers('${area}', '${category}')">
+                    <button class="btn btn-warning" onclick="savePhaseSuppliers('${area}', '${category}')">
                         <i class="bi bi-save me-2"></i>Guardar Proveedores
                     </button>
                     <button class="btn btn-secondary" onclick="closePhaseSuppliersModal()">
@@ -3762,7 +4148,7 @@ function managePhaseSuppliers(area, category) {
                     </button>
                 </div>
                 
-                <div class="mt-3 p-3" style="background: #2c3440; border-radius: 5px; border: 1px solid #17a2b8;">
+                <div class="mt-3 p-3" style="background: #2c3440; border-radius: 5px; border: 1px solid #d4af37;">
                     <h6 class="text-info mb-3">
                         <i class="bi bi-info-circle me-2"></i>Resumen de la Fase - ${area}
                     </h6>
@@ -3818,16 +4204,16 @@ function managePhaseNotes(area, category) {
     modal.id = 'phase-notes-modal';
     modal.innerHTML = `
         <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-            <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; border: 2px solid #ffc107;">
-                <div style="background: #ffc107; color: black; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
-                    <h3 style="margin: 0; color: black;">
+            <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 800px; width: 90%; max-height: 80vh; overflow-y: auto; border: 2px solid #d4af37;">
+                <div style="background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%); color: #0a0e14; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h3 style="margin: 0; color: #0a0e14;">
                         <i class="bi bi-sticky me-2"></i>Notas Importantes - ${area}
                     </h3>
-                    <button onclick="closePhaseNotesModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: black; font-size: 24px; cursor: pointer;">×</button>
+                    <button onclick="closePhaseNotesModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: #0a0e14; font-size: 24px; cursor: pointer;">×</button>
                 </div>
                 
                 <div class="mb-3">
-                    <label style="color: #ffc107;">Agregar Nueva Nota</label>
+                    <label style="color: #d4af37;">Agregar Nueva Nota</label>
                     <div class="row">
                         <div class="col-md-8">
                             <textarea class="form-control" id="new-note-text" rows="3" placeholder="Escribe una nota importante para esta fase..."></textarea>
@@ -3846,7 +4232,7 @@ function managePhaseNotes(area, category) {
                 </div>
                 
                 <div class="mb-3">
-                    <label style="color: #ffc107;">Notas Existentes</label>
+                    <label style="color: #d4af37;">Notas Existentes</label>
                     <div id="notes-list" style="max-height: 300px; overflow-y: auto;">
                         ${existingNotes.map((note, index) => `
                             <div class="card bg-secondary mb-2" id="note-${index}">
@@ -3939,11 +4325,30 @@ function getPhaseTotalCost(area, category) {
                     currentProjectManager.projectData.phaseSuppliers[phaseKey] : [];
     
     const totalCost = suppliers.reduce((sum, supplier) => {
-        const cost = parseFloat(supplier.cost.replace(/[^0-9.-]/g, '')) || 0;
+        const rawCost = String(supplier.cost ?? '');
+        const cost = parseFloat(rawCost.replace(/[^0-9.-]/g, '')) || 0;
         return sum + cost;
     }, 0);
     
     return formatCurrency(totalCost);
+}
+
+function getPhaseTotalCostValue(area, category) {
+    const phaseKey = `${category}_${area}`;
+    const suppliers = currentProjectManager.projectData.phaseSuppliers &&
+                    currentProjectManager.projectData.phaseSuppliers[phaseKey] ?
+                    currentProjectManager.projectData.phaseSuppliers[phaseKey] : [];
+
+    return suppliers.reduce((sum, supplier) => {
+        const rawCost = String(supplier.cost ?? '');
+        const cost = parseFloat(rawCost.replace(/[^0-9.-]/g, '')) || 0;
+        return sum + cost;
+    }, 0);
+}
+
+function getPhaseBudget(areaItems) {
+    if (!Array.isArray(areaItems) || areaItems.length === 0) return 0;
+    return areaItems.reduce((sum, item) => sum + (Number(item.totalEstimated) || 0), 0);
 }
 
 function getPhaseCoordinator(area, category) {
@@ -4027,48 +4432,48 @@ function addNewSupplier() {
     modal.id = 'new-supplier-modal';
     modal.innerHTML = `
         <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-            <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 600px; width: 90%; border: 2px solid #17a2b8;">
-                <div style="background: #17a2b8; color: white; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
-                    <h4 style="margin: 0; color: white;">
+            <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 600px; width: 90%; border: 2px solid #d4af37;">
+                <div style="background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%); color: #0a0e14; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h4 style="margin: 0; color: #0a0e14;">
                         <i class="bi bi-person-plus me-2"></i>Agregar Nuevo Proveedor Global
                     </h4>
-                    <button onclick="closeNewSupplierModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+                    <button onclick="closeNewSupplierModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: #0a0e14; font-size: 24px; cursor: pointer;">×</button>
                 </div>
                 
                 <div class="mb-3">
-                    <label style="color: #17a2b8;">Nombre del Proveedor</label>
+                    <label style="color: #d4af37;">Nombre del Proveedor</label>
                     <input type="text" class="form-control" id="new-supplier-name" placeholder="Ej: Constructora ABC">
                 </div>
                 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label style="color: #17a2b8;">Tipo de Servicio</label>
+                        <label style="color: #d4af37;">Tipo de Servicio</label>
                         <input type="text" class="form-control" id="new-supplier-type" placeholder="Ej: Plomería, Electricidad">
                     </div>
                     <div class="col-md-6">
-                        <label style="color: #17a2b8;">Teléfono</label>
+                        <label style="color: #d4af37;">Teléfono</label>
                         <input type="text" class="form-control" id="new-supplier-phone" placeholder="Ej: 555-123-4567">
                     </div>
                 </div>
                 
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label style="color: #17a2b8;">Email</label>
+                        <label style="color: #d4af37;">Email</label>
                         <input type="email" class="form-control" id="new-supplier-email" placeholder="Ej: contacto@proveedor.com">
                     </div>
                     <div class="col-md-6">
-                        <label style="color: #17a2b8;">Costo Promedio</label>
+                        <label style="color: #d4af37;">Costo Promedio</label>
                         <input type="text" class="form-control" id="new-supplier-cost" placeholder="Ej: $2,500">
                     </div>
                 </div>
                 
                 <div class="mb-3">
-                    <label style="color: #17a2b8;">Notas del Proveedor</label>
+                    <label style="color: #d4af37;">Notas del Proveedor</label>
                     <textarea class="form-control" id="new-supplier-notes" rows="3" placeholder="Notas adicionales sobre este proveedor..."></textarea>
                 </div>
                 
                 <div class="text-center">
-                    <button class="btn btn-info" onclick="saveNewGlobalSupplier()">
+                    <button class="btn btn-warning" onclick="saveNewGlobalSupplier()">
                         <i class="bi bi-save me-2"></i>Guardar Proveedor Global
                     </button>
                     <button class="btn btn-secondary" onclick="closeNewSupplierModal()">
@@ -4172,15 +4577,25 @@ function savePhaseSuppliers(area, category) {
     const phaseKey = `${category}_${area}`;
     const suppliers = [];
     
-    // Collect all suppliers from form
+    // Collect all suppliers from form (robust against deleted/reordered cards)
     const suppliersList = document.getElementById('suppliers-list');
-    Array.from(suppliersList.children).forEach((supplierElement, index) => {
+    const supplierCards = Array.from(suppliersList.querySelectorAll('[id^="supplier-"]'));
+    supplierCards.forEach((supplierElement) => {
+        const nameInput = supplierElement.querySelector('input[id^="supplier-name-"]');
+        const typeInput = supplierElement.querySelector('input[id^="supplier-type-"]');
+        const phoneInput = supplierElement.querySelector('input[id^="supplier-phone-"]');
+        const costInput = supplierElement.querySelector('input[id^="supplier-cost-"]');
+
         const supplierData = {
-            name: document.getElementById(`supplier-name-${index}`).value,
-            type: document.getElementById(`supplier-type-${index}`).value,
-            phone: document.getElementById(`supplier-phone-${index}`).value,
-            cost: document.getElementById(`supplier-cost-${index}`).value
+            name: (nameInput?.value || '').trim(),
+            type: (typeInput?.value || '').trim(),
+            phone: (phoneInput?.value || '').trim(),
+            cost: (costInput?.value || '').trim()
         };
+
+        if (!supplierData.name && !supplierData.type && !supplierData.phone && !supplierData.cost) {
+            return;
+        }
         
         // Add to global suppliers if not already there
         addToGlobalSuppliers(supplierData);
@@ -4252,7 +4667,8 @@ function updatePhaseSummary(area, category, suppliers, durationValue, durationUn
     
     // Calculate total cost
     const totalCost = suppliers.reduce((sum, supplier) => {
-        const cost = parseFloat(supplier.cost.replace(/[^0-9.-]/g, '')) || 0;
+        const rawCost = String(supplier.cost ?? '');
+        const cost = parseFloat(rawCost.replace(/[^0-9.-]/g, '')) || 0;
         return sum + cost;
     }, 0);
     
@@ -4416,16 +4832,16 @@ function editProjectStartDate() {
     modal.id = 'edit-start-date-modal';
     modal.innerHTML = `
         <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-            <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%; border: 2px solid #007bff;">
-                <div style="background: #007bff; color: white; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
-                    <h4 style="margin: 0; color: white;">
+            <div style="background: #1a1f2e; color: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%; border: 2px solid #d4af37;">
+                <div style="background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%); color: #0a0e14; padding: 15px; margin: -30px -30px 20px -30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h4 style="margin: 0; color: #0a0e14;">
                         <i class="bi bi-calendar-date me-2"></i>Editar Fecha de Inicio del Proyecto
                     </h4>
-                    <button onclick="closeEditStartDateModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+                    <button onclick="closeEditStartDateModal()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; color: #0a0e14; font-size: 24px; cursor: pointer;">×</button>
                 </div>
                 
                 <div class="mb-3">
-                    <label style="color: #007bff;">Fecha de Inicio Actual</label>
+                    <label style="color: #d4af37;">Fecha de Inicio Actual</label>
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Fecha actual:</strong> ${currentDate.toLocaleDateString('es-ES')}
@@ -4433,7 +4849,7 @@ function editProjectStartDate() {
                 </div>
                 
                 <div class="mb-3">
-                    <label style="color: #007bff;">Nueva Fecha de Inicio</label>
+                    <label style="color: #d4af37;">Nueva Fecha de Inicio</label>
                     <input type="date" class="form-control" id="new-start-date" value="${currentDate.toISOString().split('T')[0]}">
                     <small class="text-muted">Selecciona la nueva fecha de inicio para el proyecto</small>
                 </div>
@@ -4446,7 +4862,7 @@ function editProjectStartDate() {
                 </div>
                 
                 <div class="text-center">
-                    <button class="btn btn-primary" onclick="saveProjectStartDate()">
+                    <button class="btn btn-warning" onclick="saveProjectStartDate()">
                         <i class="bi bi-save me-2"></i>Guardar Nueva Fecha
                     </button>
                     <button class="btn btn-secondary" onclick="closeEditStartDateModal()">

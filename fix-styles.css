@@ -437,3 +437,133 @@ label {
     color: #ffffff !important;
     border: 1px solid #555 !important;
 }
+
+/* Project Manager tabs: override Bootstrap blue links */
+#project-manager-section .card-header.bg-dark {
+    background: linear-gradient(135deg, #121820 0%, #0a0e14 100%) !important;
+    color: #ffffff !important;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.3) !important;
+}
+
+#project-manager-section .card-header.bg-dark h5 {
+    color: #f1d592 !important;
+}
+
+#pm-tabs {
+    border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+}
+
+#pm-tabs .nav-link {
+    color: #cbd5e0 !important;
+    border: 1px solid transparent;
+    border-bottom: none;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+#pm-tabs .nav-link:hover,
+#pm-tabs .nav-link:focus {
+    color: #f1d592 !important;
+    border-color: rgba(212, 175, 55, 0.25) rgba(212, 175, 55, 0.25) transparent;
+    background: rgba(212, 175, 55, 0.08);
+}
+
+#pm-tabs .nav-link.active {
+    color: #d4af37 !important;
+    background: rgba(10, 14, 20, 0.55) !important;
+    border-color: rgba(212, 175, 55, 0.45) rgba(212, 175, 55, 0.45) transparent;
+}
+
+#project-manager-section .pm-footer-actions {
+    margin-bottom: 18px;
+    padding-bottom: 8px;
+}
+
+/* Subcategory editor layout */
+.pm-sub-item {
+    padding: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.22);
+    border-radius: 10px;
+    background: rgba(33, 40, 56, 0.6);
+    margin-bottom: 10px;
+}
+
+.pm-sub-item-top {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.pm-sub-item-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: #f1d592;
+    font-weight: 700;
+}
+
+.pm-sub-item-name .form-check-input {
+    margin-top: 0;
+    transform: scale(1.1);
+}
+
+.pm-sub-item-costs {
+    display: flex;
+    gap: 8px;
+}
+
+.pm-sub-item-costs .input-group {
+    width: 132px;
+}
+
+.pm-sub-item-costs .input-group-text {
+    min-width: 42px;
+    justify-content: center;
+    font-size: 0.78rem !important;
+}
+
+.pm-sub-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.pm-sub-item-meta small {
+    color: #22c55e;
+    font-weight: 700;
+    white-space: nowrap;
+    font-size: 0.95rem;
+}
+
+.pm-sub-item-bottom {
+    margin-top: 10px;
+}
+
+.pm-sub-item-bottom .input-group-text {
+    min-width: 52px;
+    justify-content: center;
+    font-size: 0.78rem !important;
+}
+
+@media (max-width: 992px) {
+    .pm-sub-item-top {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .pm-sub-item-meta {
+        justify-content: space-between;
+    }
+
+    .pm-sub-item-costs {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .pm-sub-item-costs .input-group {
+        width: calc(50% - 4px);
+    }
+}
