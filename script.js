@@ -69,6 +69,11 @@ const I18N = {
         evaluatePoorRec: 'Deal no recomendado. Buscar mejores oportunidades.',
         dealStatusGood: '✅ DEAL BUENO',
         dealStatusBad: '❌ NO RECOMENDADO',
+        dealStatusLevelExcellent: '✨ EXCELENTE',
+        dealStatusLevelGood: '✅ BUENO',
+        dealStatusLevelFair: '⚠️ REGULAR',
+        dealStatusLevelPoor: '❌ MALO',
+        dealStatusMinNotMet: ' · No cumple mínimos',
         badgeGood: 'BUENO',
         badgeBad: 'MALO',
         noProjectsExport: 'No hay proyectos para exportar',
@@ -137,6 +142,11 @@ const I18N = {
         evaluatePoorRec: 'Deal not recommended. Look for better opportunities.',
         dealStatusGood: '✅ GOOD DEAL',
         dealStatusBad: '❌ NO DEAL',
+        dealStatusLevelExcellent: '✨ EXCELLENT',
+        dealStatusLevelGood: '✅ GOOD',
+        dealStatusLevelFair: '⚠️ FAIR',
+        dealStatusLevelPoor: '❌ POOR',
+        dealStatusMinNotMet: ' · Below minimums',
         badgeGood: 'GOOD',
         badgeBad: 'BAD',
         noProjectsExport: 'No projects to export',
@@ -435,11 +445,20 @@ function clampValueByRule(value, rule) {
     return nextValue;
 }
 
+function isPartialDecimalNumericInput(raw) {
+    const t = String(raw ?? '').trim();
+    return /^-?\d+\.$/.test(t);
+}
+
 function sanitizeNumericInputElement(inputElement, { forceWrite = false } = {}) {
     if (!inputElement || inputElement.type !== 'number') return;
 
     const rawValue = inputElement.value;
     if (rawValue === '') return;
+
+    if (!forceWrite && isPartialDecimalNumericInput(rawValue)) {
+        return;
+    }
 
     const parsed = Number(rawValue);
     if (!Number.isFinite(parsed)) {
@@ -697,6 +716,52 @@ function evaluateDeal(calculation) {
     };
 }
 
+/** Map composite score to needle angle; wedges match evaluateDeal bands (40 / 60 / 80), not equal 25-point slices. */
+function scoreToNeedleDegrees(score) {
+    const s = Math.max(0, Math.min(100, Number(score) || 0));
+    if (s < 40) {
+        return -90 + (s / 40) * 45;
+    }
+    if (s < 60) {
+        return -45 + ((s - 40) / 20) * 45;
+    }
+    if (s < 80) {
+        return 0 + ((s - 60) / 20) * 45;
+    }
+    return 45 + ((s - 80) / 20) * 45;
+}
+
+function getDealStatusPresentation(evaluation, dealDecision) {
+    if (!evaluation || evaluation.levelText === t('evaluateNoData')) {
+        return { text: t('evaluateNoData'), color: '#9e9e9e' };
+    }
+    const minSuffix = !dealDecision && evaluation.level !== 'poor' ? t('dealStatusMinNotMet') : '';
+
+    switch (evaluation.level) {
+        case 'excellent':
+            return {
+                text: t('dealStatusLevelExcellent') + minSuffix,
+                color: dealDecision ? '#28a745' : '#ffc107'
+            };
+        case 'good':
+            return {
+                text: t('dealStatusLevelGood') + minSuffix,
+                color: dealDecision ? '#4CAF50' : '#ffc107'
+            };
+        case 'fair':
+            return {
+                text: t('dealStatusLevelFair') + minSuffix,
+                color: dealDecision ? '#ffc107' : '#ff9800'
+            };
+        case 'poor':
+        default:
+            return {
+                text: t('dealStatusLevelPoor'),
+                color: '#F44336'
+            };
+    }
+}
+
 // Update deal evaluator UI (semicircular gauge + score)
 function updateDealEvaluator(evaluation) {
     try {
@@ -712,8 +777,8 @@ function updateDealEvaluator(evaluation) {
         const score = Math.max(0, Math.min(100, Number(evaluation.score) || 0));
         const noData = evaluation.levelText === t('evaluateNoData');
 
-        // Needle: -90° = Malo (izq.), + 90° = Excelente (der.)
-        const needleDeg = -90 + (score / 100) * 180;
+        // Needle aligned with wedge bands (same thresholds as evaluateDeal: 40 / 60 / 80).
+        const needleDeg = scoreToNeedleDegrees(score);
         needleRot.style.transform = `rotate(${needleDeg}deg)`;
         needleRot.style.transformOrigin = '0 0';
 
@@ -967,11 +1032,22 @@ function calculateUnderwriting() {
                 console.warn(`Element not found: ${id}`);
                 return defaultValue;
             }
-            const parsed = parseFloat(element.value);
+            let raw = element.value;
+            if (typeof raw === 'string' && raw.includes(',') && !raw.includes('.')) {
+                raw = raw.replace(',', '.');
+            }
+            const parsed = parseFloat(raw);
             const numericValue = Number.isFinite(parsed) ? parsed : defaultValue;
             const rule = INPUT_RANGE_RULES[id];
             const safeValue = rule ? clampValueByRule(numericValue, rule) : numericValue;
-            if (element.type === 'number' && element.value !== String(safeValue)) {
+            const isFocused = document.activeElement === element;
+            const partialDecimal = element.type === 'number' && isPartialDecimalNumericInput(element.value);
+            if (
+                element.type === 'number' &&
+                !isFocused &&
+                !partialDecimal &&
+                element.value !== String(safeValue)
+            ) {
                 element.value = String(safeValue);
             }
             console.log(`${id}: ${safeValue}`);
@@ -1250,14 +1326,25 @@ function updateUI() {
             }
         };
 
+        const updateValueUnlessFocused = (id, value) => {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.warn(`Element not found: ${id}`);
+                return;
+            }
+            if (document.activeElement === element) return;
+            element.value = value;
+            console.log(`Updated value ${id}: ${value}`);
+        };
+
         // Project Costs
         updateField('total-project-costs', formatCurrency(currentCalculation.totalProjectCosts));
 
         // HML Financing
         updateField('hml-points-cost', formatCurrency(currentCalculation.hmlPointsCost));
         updateField('hml-total-interest', formatCurrency(currentCalculation.hmlTotalInterest));
-        updateValue('down-payment-amount', currentCalculation.downPaymentAmount);
-        updateValue('down-payment-percent', formatPercentageShort(currentCalculation.downPaymentPercent));
+        updateValueUnlessFocused('down-payment-amount', currentCalculation.downPaymentAmount);
+        updateValueUnlessFocused('down-payment-percent', formatPercentageShort(currentCalculation.downPaymentPercent));
         updateValue('hml-loan-amount', currentCalculation.hmlLoanAmount);
         updateValue('hml-loan-percent', formatPercentageShort(currentCalculation.hmlLoanPercent));
         updateField('hml-total-fees', formatCurrency(currentCalculation.hmlTotalFees));
@@ -1291,8 +1378,9 @@ function updateUI() {
 
         const statusElement = document.getElementById('result-deal-status');
         if (statusElement) {
-            statusElement.textContent = currentCalculation.dealDecision ? t('dealStatusGood') : t('dealStatusBad');
-            statusElement.style.color = currentCalculation.dealDecision ? '#4CAF50' : '#F44336';
+            const statusPresentation = getDealStatusPresentation(evaluation, currentCalculation.dealDecision);
+            statusElement.textContent = statusPresentation.text;
+            statusElement.style.color = statusPresentation.color;
         }
 
         updateRoiScenarios(currentCalculation);
@@ -1443,7 +1531,7 @@ function loadProjects() {
                 <td class="text-success-gold">${formatCurrency(project.tpcPlusCost)}</td>
                 <td class="${project.roi >= 20 ? 'text-success-gold' : project.roi >= 0 ? 'text-warning-gold' : 'text-danger-gold'}">${project.roi.toFixed(1)}%</td>
                 <td class="${project.profit >= 0 ? 'text-success-gold' : 'text-danger-gold'}">${formatCurrency(project.profit)}</td>
-                <td>
+                <td class="text-center align-middle">
                     <span class="badge ${project.dealDecision ? 'bg-success' : 'bg-danger'}">
                         ${project.dealDecision ? t('badgeGood') : t('badgeBad')}
                     </span>
@@ -1699,6 +1787,24 @@ const subcategoryDatabase = {
         "Limpiar drenajes": { materials: 0, labor: 150, unit: "EACH" },
         "Instalar bomba de agua": { materials: 400, labor: 300, unit: "EACH" }
     },
+    "Paredes": {
+        "Reparar drywall / paneles": { materials: 40, labor: 120, unit: "SQFT" },
+        "Instalar drywall nuevo": { materials: 35, labor: 45, unit: "SQFT" },
+        "Texturizar y lijar": { materials: 8, labor: 15, unit: "SQFT" },
+        "Instalar molduras / cornisas": { materials: 5, labor: 12, unit: "LINEAR_FT" }
+    },
+    "Puertas": {
+        "Ajustar o reparar puerta existente": { materials: 40, labor: 120, unit: "EACH" },
+        "Reemplazar puerta interior": { materials: 180, labor: 220, unit: "EACH" },
+        "Reemplazar marco / casing": { materials: 120, labor: 200, unit: "EACH" },
+        "Instalar cerradura y herrajes": { materials: 80, labor: 100, unit: "EACH" }
+    },
+    "Ventanas": {
+        "Reparar marco o bisagras": { materials: 60, labor: 150, unit: "EACH" },
+        "Reemplazar ventana": { materials: 350, labor: 400, unit: "EACH" },
+        "Instalar persianas o cortinas": { materials: 200, labor: 180, unit: "EACH" },
+        "Sellado e impermeabilización": { materials: 25, labor: 80, unit: "LINEAR_FT" }
+    },
     "Techo": {
         "Reemplazar tejas asfálticas": { materials: 2.5, labor: 3, unit: "SQFT" },
         "Reemplazar tejas metálicas": { materials: 4, labor: 4, unit: "SQFT" },
@@ -1723,10 +1829,42 @@ function deepClone(value) {
 
 function ensureProjectSubcategoryDatabase() {
     if (!currentProjectManager?.projectData) return deepClone(subcategoryDatabase);
-    if (!currentProjectManager.projectData.subcategoryDatabase) {
+
+    let stored = currentProjectManager.projectData.subcategoryDatabase;
+    const isEmpty =
+        !stored ||
+        typeof stored !== 'object' ||
+        Array.isArray(stored) ||
+        Object.keys(stored).length === 0;
+
+    if (isEmpty) {
         currentProjectManager.projectData.subcategoryDatabase = deepClone(subcategoryDatabase);
+        return currentProjectManager.projectData.subcategoryDatabase;
     }
-    return currentProjectManager.projectData.subcategoryDatabase;
+
+    const defaults = subcategoryDatabase;
+    let merged = false;
+    for (const area of Object.keys(defaults)) {
+        const entry = stored[area];
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+            stored[area] = deepClone(defaults[area]);
+            merged = true;
+        }
+    }
+
+    if (merged) {
+        try {
+            currentProjectManager.projectData.lastUpdated = new Date().toISOString();
+            localStorage.setItem(
+                `pm_${currentProjectManager.dealId}`,
+                JSON.stringify(currentProjectManager.projectData)
+            );
+        } catch (e) {
+            console.warn('No se pudo persistir subcategoryDatabase fusionada:', e);
+        }
+    }
+
+    return stored;
 }
 
 function ensureProjectAreaCategoryMap() {
@@ -2305,6 +2443,332 @@ function calculateCategoryDuration(items, category) {
     }, 0);
 }
 
+function escapeHtmlText(s) {
+    return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function escapeJsSingleQuoted(s) {
+    return String(s ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, '\\\'')
+        .replace(/\r/g, '')
+        .replace(/\n/g, '\\n');
+}
+
+function closeTimelinePhaseItemPicker() {
+    document.getElementById('timeline-phase-item-picker')?.remove();
+    document.getElementById('timeline-phase-complete-picker')?.remove();
+}
+
+function openPmMultiItemEditPicker(items, headerTitle) {
+    closeTimelinePhaseItemPicker();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'timeline-phase-item-picker';
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10040;display:flex;align-items:center;justify-content:center;padding:16px;';
+    backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeTimelinePhaseItemPicker();
+    });
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'width:100%;max-width:480px;background:#1a1f2e;border:2px solid #d4af37;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,0.45);overflow:hidden;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'background:linear-gradient(135deg,#d4af37 0%,#f1d592 50%,#aa8c2c 100%);color:#000;padding:14px 18px;font-weight:800;font-size:1rem;';
+    header.textContent = headerTitle;
+
+    const body = document.createElement('div');
+    body.style.padding = '16px 18px 18px 18px';
+
+    const hint = document.createElement('p');
+    hint.style.cssText = 'color:#adb5bd;font-size:0.88rem;margin:0 0 12px 0;';
+    hint.textContent = 'Varios ítems en esta área. Elige cuál editar:';
+
+    const list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:10px;max-height:min(50vh,320px);overflow-y:auto;';
+
+    items.forEach((item) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(212,175,55,0.35);border-radius:8px;background:rgba(44,52,64,0.6);';
+
+        const label = document.createElement('div');
+        label.style.cssText = 'color:#e2e8f0;font-size:0.9rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        label.textContent = item.description || '(Sin descripción)';
+        label.title = item.description || '';
+
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'btn btn-sm btn-warning flex-shrink-0';
+        editBtn.innerHTML = '<i class="bi bi-pencil me-1"></i>Editar';
+        editBtn.onclick = () => {
+            closeTimelinePhaseItemPicker();
+            editProjectItem(item.id);
+        };
+
+        row.appendChild(label);
+        row.appendChild(editBtn);
+        list.appendChild(row);
+    });
+
+    const footer = document.createElement('div');
+    footer.style.cssText = 'display:flex;justify-content:flex-end;margin-top:14px;';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Cerrar';
+    cancelBtn.onclick = () => closeTimelinePhaseItemPicker();
+    footer.appendChild(cancelBtn);
+
+    body.appendChild(hint);
+    body.appendChild(list);
+    body.appendChild(footer);
+    panel.appendChild(header);
+    panel.appendChild(body);
+    backdrop.appendChild(panel);
+    document.body.appendChild(backdrop);
+}
+
+function openTimelinePhaseItemEditor(area, category) {
+    if (!currentProjectManager) return;
+    closeMarkItemCompletedModal();
+    const items = currentProjectManager.projectData.items.filter(
+        (i) => i.area === area && i.category === category
+    );
+    if (!items.length) {
+        showNotification('No hay ítems en esta fase', 'info');
+        return;
+    }
+    if (items.length === 1) {
+        editProjectItem(items[0].id);
+        return;
+    }
+    openPmMultiItemEditPicker(items, `Editar fase: ${area}`);
+}
+
+function openBudgetByAreaEditor(area) {
+    if (!currentProjectManager) return;
+    closeMarkItemCompletedModal();
+    const items = currentProjectManager.projectData.items.filter((i) => i.area === area);
+    if (!items.length) {
+        showNotification('No hay ítems en esta área', 'info');
+        return;
+    }
+    if (items.length === 1) {
+        editProjectItem(items[0].id);
+        return;
+    }
+    openPmMultiItemEditPicker(items, `Editar área: ${area}`);
+}
+
+function closeMarkItemCompletedModal() {
+    document.getElementById('timeline-mark-item-completed-modal')?.remove();
+}
+
+function showMarkItemCompletedModal(item) {
+    if (!currentProjectManager || !item) return;
+
+    closeMarkItemCompletedModal();
+    closeTimelinePhaseItemPicker();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'timeline-mark-item-completed-modal';
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10045;display:flex;align-items:center;justify-content:center;padding:16px;';
+    backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeMarkItemCompletedModal();
+    });
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'width:100%;max-width:440px;background:#1a1f2e;border:2px solid #d4af37;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,0.45);overflow:hidden;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'background:linear-gradient(135deg,#d4af37 0%,#f1d592 50%,#aa8c2c 100%);color:#000;padding:14px 18px;font-weight:800;font-size:1rem;';
+    header.textContent = 'Marcar como completado';
+
+    const body = document.createElement('div');
+    body.style.padding = '16px 18px 18px 18px';
+
+    const desc = document.createElement('p');
+    desc.style.cssText = 'color:#e2e8f0;font-size:0.9rem;margin:0 0 8px 0;font-weight:600;';
+    desc.textContent = item.description || '(Sin descripción)';
+
+    const hint = document.createElement('p');
+    hint.style.cssText = 'color:#adb5bd;font-size:0.82rem;margin:0 0 14px 0;';
+    hint.textContent = 'El costo real es obligatorio y debe ser mayor que 0 para marcar el ítem como completado.';
+
+    const label = document.createElement('label');
+    label.htmlFor = 'timeline-complete-actual-input';
+    label.style.cssText = 'display:block;color:#d4af37;font-weight:700;margin-bottom:8px;';
+    label.textContent = 'Costo real ($) *';
+
+    const input = document.createElement('input');
+    input.id = 'timeline-complete-actual-input';
+    input.type = 'number';
+    input.className = 'form-control';
+    input.min = '0.01';
+    input.step = '0.01';
+    input.required = true;
+    input.placeholder = 'Ej: 1500';
+    if (item.totalActual > 0) {
+        input.value = String(item.totalActual);
+    }
+
+    const err = document.createElement('p');
+    err.style.cssText = 'color:#f44336;font-size:0.8rem;margin:8px 0 0 0;display:none;';
+    err.id = 'timeline-complete-actual-error';
+
+    const footer = document.createElement('div');
+    footer.style.cssText = 'display:flex;justify-content:flex-end;gap:10px;margin-top:18px;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Cancelar';
+    cancelBtn.onclick = () => closeMarkItemCompletedModal();
+
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.className = 'btn btn-success';
+    okBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Marcar completado';
+    okBtn.onclick = () => {
+        const v = parseFloat(String(input.value).replace(',', '.')) || 0;
+        if (!Number.isFinite(v) || v <= 0) {
+            err.textContent = 'Ingresa un costo real mayor a 0.';
+            err.style.display = 'block';
+            showNotification('Costo real obligatorio: debe ser mayor a 0.', 'error');
+            return;
+        }
+        err.style.display = 'none';
+        const idx = currentProjectManager.projectData.items.findIndex((i) => i.id === item.id);
+        if (idx === -1) {
+            showNotification('Ítem no encontrado', 'error');
+            return;
+        }
+        const cat = currentProjectManager.projectData.items[idx].category;
+        currentProjectManager.projectData.items[idx] = {
+            ...currentProjectManager.projectData.items[idx],
+            status: 'COMPLETED',
+            totalActual: v,
+            lastUpdated: new Date().toISOString()
+        };
+        try {
+            syncProjectManagerAfterItemsChange(cat);
+        } catch (e) {
+            console.error(e);
+            showNotification('Error al guardar', 'error');
+            return;
+        }
+        closeMarkItemCompletedModal();
+        showNotification('Ítem marcado como completado', 'success');
+    };
+
+    footer.appendChild(cancelBtn);
+    footer.appendChild(okBtn);
+
+    body.appendChild(desc);
+    body.appendChild(hint);
+    body.appendChild(label);
+    body.appendChild(input);
+    body.appendChild(err);
+    body.appendChild(footer);
+
+    panel.appendChild(header);
+    panel.appendChild(body);
+    backdrop.appendChild(panel);
+    document.body.appendChild(backdrop);
+    setTimeout(() => input.focus(), 50);
+}
+
+function openTimelinePhaseCompleteFlow(area, category) {
+    if (!currentProjectManager) return;
+    const items = currentProjectManager.projectData.items.filter(
+        (i) => i.area === area && i.category === category
+    );
+    if (!items.length) {
+        showNotification('No hay ítems en esta fase', 'info');
+        return;
+    }
+    const incomplete = items.filter((i) => i.status !== 'COMPLETED');
+    if (!incomplete.length) {
+        showNotification('Todos los ítems de esta fase ya están completados.', 'info');
+        return;
+    }
+    if (incomplete.length === 1) {
+        showMarkItemCompletedModal(incomplete[0]);
+        return;
+    }
+
+    closeTimelinePhaseItemPicker();
+    closeMarkItemCompletedModal();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'timeline-phase-complete-picker';
+    backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:10040;display:flex;align-items:center;justify-content:center;padding:16px;';
+    backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) closeTimelinePhaseItemPicker();
+    });
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'width:100%;max-width:480px;background:#1a1f2e;border:2px solid #d4af37;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,0.45);overflow:hidden;';
+
+    const header = document.createElement('div');
+    header.style.cssText = 'background:linear-gradient(135deg,#d4af37 0%,#f1d592 50%,#aa8c2c 100%);color:#000;padding:14px 18px;font-weight:800;font-size:1rem;';
+    header.textContent = `Completar fase: ${area}`;
+
+    const body = document.createElement('div');
+    body.style.padding = '16px 18px 18px 18px';
+
+    const hint = document.createElement('p');
+    hint.style.cssText = 'color:#adb5bd;font-size:0.88rem;margin:0 0 12px 0;';
+    hint.textContent = 'Varios ítems pendientes. Elige uno; deberás ingresar el costo real para marcarlo completado.';
+
+    const list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:10px;max-height:min(50vh,320px);overflow-y:auto;';
+
+    incomplete.forEach((item) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(212,175,55,0.35);border-radius:8px;background:rgba(44,52,64,0.6);';
+
+        const label = document.createElement('div');
+        label.style.cssText = 'color:#e2e8f0;font-size:0.9rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        label.textContent = item.description || '(Sin descripción)';
+        label.title = item.description || '';
+
+        const completeBtn = document.createElement('button');
+        completeBtn.type = 'button';
+        completeBtn.className = 'btn btn-sm btn-success flex-shrink-0';
+        completeBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Completar';
+        completeBtn.onclick = () => {
+            closeTimelinePhaseItemPicker();
+            showMarkItemCompletedModal(item);
+        };
+
+        row.appendChild(label);
+        row.appendChild(completeBtn);
+        list.appendChild(row);
+    });
+
+    const footer = document.createElement('div');
+    footer.style.cssText = 'display:flex;justify-content:flex-end;margin-top:14px;';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Cerrar';
+    cancelBtn.onclick = () => closeTimelinePhaseItemPicker();
+    footer.appendChild(cancelBtn);
+
+    body.appendChild(hint);
+    body.appendChild(list);
+    body.appendChild(footer);
+    panel.appendChild(header);
+    panel.appendChild(body);
+    backdrop.appendChild(panel);
+    document.body.appendChild(backdrop);
+}
+
 // Generate phase HTML
 function generatePhaseHTML(items, category, startDate, dayOffset) {
     if (items.length === 0) {
@@ -2337,12 +2801,22 @@ function generatePhaseHTML(items, category, startDate, dayOffset) {
         html += `
             <div class="card bg-dark text-white mb-3">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">${area}</h6>
-                        <small class="text-muted">
-                            ${areaStart.toLocaleDateString('es-ES')} - ${areaEnd.toLocaleDateString('es-ES')}
-                            (${areaDuration} días)
-                        </small>
+                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                        <h6 class="mb-0 text-truncate timeline-phase-title">${escapeHtmlText(area)}</h6>
+                        <div class="timeline-phase-header-right d-flex flex-column align-items-end gap-2 flex-shrink-0 ms-auto">
+                            <small class="text-muted text-end timeline-phase-dates" style="line-height: 1.35;">
+                                ${areaStart.toLocaleDateString('es-ES')} - ${areaEnd.toLocaleDateString('es-ES')}
+                                <span class="d-inline-block">(${areaDuration} días)</span>
+                            </small>
+                            <div class="timeline-phase-header-actions d-flex align-items-center gap-2">
+                                <button type="button" class="btn timeline-phase-complete-btn" onclick="openTimelinePhaseCompleteFlow('${escapeJsSingleQuoted(area)}', '${category}')" title="Marcar completado (requiere costo real)">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                                <button type="button" class="btn timeline-phase-edit-btn" onclick="openTimelinePhaseItemEditor('${escapeJsSingleQuoted(area)}', '${category}')" title="Editar ítems de esta fase">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="mt-2">
                         <div class="progress" style="height: 8px;">
@@ -2361,12 +2835,12 @@ function generatePhaseHTML(items, category, startDate, dayOffset) {
                     <div class="mt-3">
                         <div class="row">
                             <div class="col-md-6">
-                                <button class="btn btn-sm btn-outline-warning w-100" onclick="managePhaseSuppliers('${area}', '${category}')">
+                                <button class="btn btn-sm btn-outline-warning w-100" onclick="managePhaseSuppliers('${escapeJsSingleQuoted(area)}', '${category}')">
                                     <i class="bi bi-people me-1"></i>Proveedores
                                 </button>
                             </div>
                             <div class="col-md-6">
-                                <button class="btn btn-sm btn-outline-warning w-100" onclick="managePhaseNotes('${area}', '${category}')">
+                                <button class="btn btn-sm btn-outline-warning w-100" onclick="managePhaseNotes('${escapeJsSingleQuoted(area)}', '${category}')">
                                     <i class="bi bi-sticky me-1"></i>Notas
                                 </button>
                             </div>
@@ -2707,6 +3181,7 @@ function renderBudgetControl() {
                                 <th>Diferencia</th>
                                 <th>% Completado</th>
                                 <th>Estado</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2734,6 +3209,11 @@ function renderBudgetControl() {
                                                 ${percentComplete >= 100 ? '✅ Completado' : percentComplete >= 50 ? '🔄 En Progreso' : '📋 Planificado'}
                                             </span>
                                         </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-warning" onclick='openBudgetByAreaEditor(${JSON.stringify(area)})' title="Editar ítem${data.count > 1 ? 's' : ''} de esta área">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        </td>
                                     </tr>
                                 `;
                             }).join('')}
@@ -2755,6 +3235,7 @@ function renderBudgetControl() {
                                         ${totalActual >= totalEstimated ? '✅ Dentro de Presupuesto' : '⚠️ En Ejecución'}
                                     </span>
                                 </th>
+                                <th></th>
                             </tr>
                         </tfoot>
                     </table>
@@ -3475,6 +3956,11 @@ function saveProjectItem(category) {
     const defaultArea = category === 'INTERIOR' ? 'General Interior' : 'General Exterior';
     const resolvedArea = selectedArea || defaultArea;
 
+    if (document.getElementById('item-status').value === 'COMPLETED') {
+        showNotification('No puedes crear un ítem ya como Completado sin costo real. Créalo en otro estado y luego usa el botón ✓ en el cronograma o edítalo.', 'error');
+        return;
+    }
+
     // Create description
     let description = document.getElementById('item-description').value;
     if (selectedSubcategories.length > 1 && (!description || description === '')) {
@@ -3632,7 +4118,7 @@ function editProjectItem(itemId) {
                     <div class="row mb-3">
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Cantidad</label>
-                            <input type="number" class="form-control" id="edit-item-quantity" value="${item.quantity || 1}" min="1" required>
+                            <input type="number" class="form-control" id="edit-item-quantity" value="${item.quantity || 1}" min="1" required oninput="refreshEditItemBudgetDisplay()">
                         </div>
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Unidad</label>
@@ -3665,30 +4151,36 @@ function editProjectItem(itemId) {
                     <div class="row mb-3">
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Materiales</label>
-                            <input type="number" class="form-control" id="edit-item-materials" value="${item.materialsCost}" step="100">
+                            <input type="number" class="form-control" id="edit-item-materials" value="${item.materialsCost}" step="100" oninput="refreshEditItemBudgetDisplay()">
                             <small class="text-muted">Suma automática de subcategorías</small>
                         </div>
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Mano de Obra</label>
-                            <input type="number" class="form-control" id="edit-item-labor" value="${item.laborCost}" step="100">
+                            <input type="number" class="form-control" id="edit-item-labor" value="${item.laborCost}" step="100" oninput="refreshEditItemBudgetDisplay()">
                             <small class="text-muted">Suma automática de subcategorías</small>
                         </div>
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Otros Costos</label>
-                            <input type="number" class="form-control" id="edit-item-other" value="${item.otherCosts || 0}" step="100">
+                            <input type="number" class="form-control" id="edit-item-other" value="${item.otherCosts || 0}" step="100" oninput="refreshEditItemBudgetDisplay()">
                             <small class="text-muted">Permisos, impuestos, etc.</small>
                         </div>
                         <div class="col-md-3">
                             <label style="color: #d4af37;">Margen (%)</label>
-                            <input type="number" class="form-control" id="edit-item-markup" value="${item.markup || 0}" step="5">
+                            <input type="number" class="form-control" id="edit-item-markup" value="${item.markup || 0}" step="5" oninput="refreshEditItemBudgetDisplay()">
                             <small class="text-muted">% para ganancia del contratista</small>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label style="color: #d4af37;">Costo Real (Opcional)</label>
-                        <input type="number" class="form-control" id="edit-item-actual" value="${item.totalActual || 0}" step="100" placeholder="Costo real del trabajo completado">
-                        <small class="text-muted">Ingresa el costo real cuando el trabajo esté completado</small>
+                        <label style="color: #d4af37;">Presupuesto</label>
+                        <input type="number" class="form-control pm-readonly-input" id="edit-item-budget-display" value="${item.totalEstimated != null ? item.totalEstimated : 0}" step="any" readonly tabindex="-1" aria-readonly="true" title="Calculado automáticamente (materiales + MO + otros + margen) × cantidad">
+                        <small class="text-muted">Total estimado del ítem según los valores anteriores (no editable)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label style="color: #d4af37;">Costo Real</label>
+                        <input type="number" class="form-control" id="edit-item-actual" value="${item.totalActual || 0}" step="100" placeholder="Costo real del trabajo completado" min="0">
+                        <small class="text-muted">Obligatorio si el estado es <strong>Completado</strong> (mayor a 0). Opcional en otros estados.</small>
                     </div>
                     
                     <div class="mb-3">
@@ -3726,6 +4218,7 @@ function editProjectItem(itemId) {
                 }
             });
         }
+        refreshEditItemBudgetDisplay();
     }, 100);
 }
 
@@ -3745,6 +4238,7 @@ function updateEditSubcategories(area) {
     if (!area || !db[area]) {
         subcategoryRow.style.display = 'none';
         subcategoryOptions.innerHTML = '';
+        refreshEditItemBudgetDisplay();
         return;
     }
     
@@ -3799,6 +4293,7 @@ function updateEditSubcategories(area) {
     }
     
     subcategoryOptions.innerHTML = html;
+    refreshEditItemBudgetDisplay();
 }
 
 // Toggle edit subcategory
@@ -3821,10 +4316,29 @@ function toggleEditSubcategory(name, materials, labor, unit, isChecked) {
     updateEditAutomaticTotals();
 }
 
+// Presupuesto estimado en modal Editar ítem (solo lectura; refleja el mismo cálculo que al guardar)
+function refreshEditItemBudgetDisplay() {
+    const out = document.getElementById('edit-item-budget-display');
+    if (!out) return;
+
+    const materials = parseFloat(document.getElementById('edit-item-materials')?.value) || 0;
+    const labor = parseFloat(document.getElementById('edit-item-labor')?.value) || 0;
+    const other = parseFloat(document.getElementById('edit-item-other')?.value) || 0;
+    const markup = parseFloat(document.getElementById('edit-item-markup')?.value) || 0;
+    const quantity = Math.max(1, parseInt(document.getElementById('edit-item-quantity')?.value, 10) || 1);
+
+    const subtotal = (materials + labor + other) * quantity;
+    const markupAmount = subtotal * (markup / 100);
+    const totalEstimated = subtotal + markupAmount;
+
+    out.value = Number.isFinite(totalEstimated) ? Math.round(totalEstimated * 100) / 100 : 0;
+}
+
 // Update edit automatic totals
 function updateEditAutomaticTotals() {
     if (selectedSubcategories.length === 0) {
         // Modo manual: no sobreescribir campos de costo en edición
+        refreshEditItemBudgetDisplay();
         return;
     }
     
@@ -3840,6 +4354,8 @@ function updateEditAutomaticTotals() {
     if (selectedSubcategories.length === 1) {
         document.getElementById('edit-item-unit').value = selectedSubcategories[0].unit;
     }
+
+    refreshEditItemBudgetDisplay();
 }
 
 // Update edit work type
@@ -3910,6 +4426,12 @@ function updateProjectItem(category) {
     const markup = parseFloat(document.getElementById('edit-item-markup').value) || 0;
     const actual = parseFloat(document.getElementById('edit-item-actual').value) || 0;
     const quantity = Math.max(1, parseInt(document.getElementById('edit-item-quantity').value, 10) || 1);
+    const editStatus = document.getElementById('edit-item-status').value;
+
+    if (editStatus === 'COMPLETED' && (!Number.isFinite(actual) || actual <= 0)) {
+        showNotification('Para estado Completado debes ingresar un costo real mayor a 0.', 'error');
+        return;
+    }
     
     console.log('Edit form values - materials:', materials, 'labor:', labor, 'other:', other, 'markup:', markup, 'actual:', actual);
     
@@ -3945,7 +4467,7 @@ function updateProjectItem(category) {
         markup: markup,
         totalEstimated: totalEstimated,
         totalActual: actual,
-        status: document.getElementById('edit-item-status').value,
+        status: editStatus,
         notes: document.getElementById('edit-item-notes').value || '',
         lastUpdated: new Date().toISOString(),
         subcategories: [...selectedSubcategories]

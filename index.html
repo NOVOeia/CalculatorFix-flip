@@ -275,7 +275,7 @@
                                                 <div class="input-group mb-2">
                                                     <span class="input-group-text">$</span>
                                                     <input type="number" class="form-control editable"
-                                                        id="down-payment-amount" value="0" step="1000" placeholder="0">
+                                                        id="down-payment-amount" value="0" step="1" placeholder="0">
                                                 </div>
                                                 <small class="form-text text-muted">Monto del Down Payment (se calculará
                                                     el % automáticamente)</small>
@@ -326,7 +326,7 @@
                                                 <label class="form-label editable-field">HML Points %</label>
                                                 <div class="input-group mb-2">
                                                     <input type="number" class="form-control editable"
-                                                        id="hml-points-rate" value="0" step="0.5" placeholder="0">
+                                                        id="hml-points-rate" value="0" step="0.01" placeholder="0">
                                                     <span class="input-group-text">%</span>
                                                 </div>
                                                 <small class="form-text text-muted">Puntos del préstamo HML</small>
@@ -338,7 +338,7 @@
                                                 <label class="form-label editable-field">HML Interest Rate</label>
                                                 <div class="input-group mb-2">
                                                     <input type="number" class="form-control editable"
-                                                        id="hml-interest-rate" value="0" step="0.5" placeholder="0">
+                                                        id="hml-interest-rate" value="0" step="0.01" placeholder="0">
                                                     <span class="input-group-text">%</span>
                                                 </div>
                                                 <small class="form-text text-muted">Tasa de interés anual</small>
@@ -578,7 +578,7 @@
                                                                 <g id="gauge-needle-rot" class="gauge-needle-rot"
                                                                     style="transform: rotate(-90deg);">
                                                                     <line class="gauge-needle" x1="0" y1="0"
-                                                                        x2="0" y2="-76" stroke-width="4.5"
+                                                                        x2="0" y2="-76" stroke-width="5.5"
                                                                         stroke-linecap="round" />
                                                                 </g>
                                                                 <circle class="gauge-hub" cx="0" cy="0" r="10" />
@@ -728,7 +728,7 @@
                                     <th style="color: var(--accent-gold) !important; font-weight: 700;">ROI</th>
                                     <th style="color: var(--accent-gold) !important; font-weight: 700;">Ganancia Neta
                                     </th>
-                                    <th style="color: var(--accent-gold) !important; font-weight: 700;">Estado</th>
+                                    <th class="text-center" style="color: var(--accent-gold) !important; font-weight: 700;">Estado</th>
                                     <th style="color: var(--accent-gold) !important; font-weight: 700;">Acciones</th>
                                 </tr>
                             </thead>
