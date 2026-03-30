@@ -116,21 +116,41 @@ h6 {
     align-items: center;
 }
 
-#language-switcher {
-    min-width: 74px;
-    height: 46px;
-    padding: 0.45rem 2.1rem 0.45rem 0.9rem;
-    background: rgba(212, 175, 55, 0.12);
-    color: var(--text-primary);
+.language-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    min-height: 46px;
+    border-radius: 12px;
     border: 1px solid rgba(212, 175, 55, 0.35);
-    font-weight: 700;
-    border-radius: 10px;
-    line-height: 1.2;
+    background: rgba(212, 175, 55, 0.12);
 }
 
-#language-switcher:focus {
-    border-color: var(--accent-gold);
-    box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.2);
+.language-toggle-btn {
+    border: 0;
+    outline: 0;
+    min-width: 42px;
+    height: 38px;
+    border-radius: 9px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-primary);
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.language-toggle-btn:hover {
+    background: rgba(212, 175, 55, 0.14);
+}
+
+.language-toggle-btn:focus-visible {
+    box-shadow: 0 0 0 0.2rem rgba(212, 175, 55, 0.28);
+}
+
+.language-toggle-btn.is-active {
+    background: linear-gradient(135deg, #d4af37 0%, #f1d592 50%, #aa8c2c 100%);
+    color: #0a0e14;
 }
 
 @media (min-width: 992px) {

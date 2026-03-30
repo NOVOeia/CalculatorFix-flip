@@ -927,17 +927,38 @@ document.addEventListener('DOMContentLoaded', function () {
         currentLanguage = 'es';
     }
     const langSwitcher = document.getElementById('language-switcher');
-    if (langSwitcher) {
-        langSwitcher.value = currentLanguage;
-        langSwitcher.addEventListener('change', (event) => {
-            currentLanguage = event.target.value === 'en' ? 'en' : 'es';
-            localStorage.setItem('fixFlipLanguage', currentLanguage);
-            applyTranslations();
-            loadProjects();
-            if (currentCalculation) {
-                updateUI();
-            }
+    const applyLanguageSelectionUI = () => {
+        const toggleButtons = document.querySelectorAll('.language-toggle-btn[data-lang]');
+        toggleButtons.forEach((btn) => {
+            const lang = btn.getAttribute('data-lang');
+            btn.classList.toggle('is-active', lang === currentLanguage);
+            btn.setAttribute('aria-pressed', lang === currentLanguage ? 'true' : 'false');
         });
+    };
+    const applyLanguageChange = (nextLang) => {
+        currentLanguage = nextLang === 'en' ? 'en' : 'es';
+        localStorage.setItem('fixFlipLanguage', currentLanguage);
+        applyTranslations();
+        loadProjects();
+        if (currentCalculation) {
+            updateUI();
+        }
+        applyLanguageSelectionUI();
+    };
+    if (langSwitcher) {
+        if (langSwitcher.tagName === 'SELECT') {
+            langSwitcher.value = currentLanguage;
+            langSwitcher.addEventListener('change', (event) => {
+                applyLanguageChange(event.target.value);
+            });
+        } else {
+            applyLanguageSelectionUI();
+            langSwitcher.querySelectorAll('.language-toggle-btn[data-lang]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    applyLanguageChange(btn.getAttribute('data-lang'));
+                });
+            });
+        }
     }
     applyTranslations();
     ensureI18nObserver();
@@ -3021,44 +3042,9 @@ function renderBudgetControl() {
     const budgetVariancePercent = dealRepairBudget > 0 ? Math.round((budgetVariance / dealRepairBudget) * 100) : 0;
     
     let html = `
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card bg-dark text-white">
-                    <div class="card-body text-center">
-                        <h4 class="text-gold mb-1">${formatCurrency(dealRepairBudget)}</h4>
-                        <small>Presupuesto Deal</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-dark text-white">
-                    <div class="card-body text-center">
-                        <h4 class="text-warning mb-1">${formatCurrency(totalEstimated)}</h4>
-                        <small>Presupuesto PM</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-dark text-white">
-                    <div class="card-body text-center">
-                        <h4 class="text-info mb-1">${formatCurrency(totalActual)}</h4>
-                        <small>Gastado Actual</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-dark text-white">
-                    <div class="card-body text-center">
-                        <h4 class="${budgetVariance >= 0 ? 'text-success' : 'text-danger'} mb-1">${budgetVariance >= 0 ? '+' : ''}${formatCurrency(budgetVariance)}</h4>
-                        <small>Variación Deal</small>
-                    </div>
-                </div>
-            </div>
-        </div>
         
         <div class="row mb-4">
             <div class="col-12">
-                <h6 class="text-gold mb-3">💰 Línea de Gastos de Reparaciones</h6>
                 <div class="card bg-dark text-white">
                     <div class="card-body">
                         <div class="row mb-3">
@@ -3159,7 +3145,7 @@ function renderBudgetControl() {
                             </div>
                             <div class="col-3">
                                 <h5 class="text-warning">${formatCurrency(totalMarkup)}</h5>
-                                <small>Margen</small>
+                                <small>% contratista</small>
                             </div>
                         </div>
                     </div>
