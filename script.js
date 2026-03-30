@@ -4634,19 +4634,16 @@ function managePhaseSuppliers(area, category) {
                             <div class="card bg-secondary mb-2" id="supplier-${index}">
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-md-3">
+                                        <div class="col-md-4">
                                             <input type="text" class="form-control form-control-sm" value="${supplier.name}" placeholder="Nombre del proveedor" id="supplier-name-${index}">
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-4">
                                             <input type="text" class="form-control form-control-sm" value="${supplier.type}" placeholder="Tipo de servicio" id="supplier-type-${index}">
                                         </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-3">
                                             <input type="text" class="form-control form-control-sm" value="${supplier.phone}" placeholder="Teléfono" id="supplier-phone-${index}">
                                         </div>
-                                        <div class="col-md-2">
-                                            <input type="text" class="form-control form-control-sm" value="${supplier.cost}" placeholder="Costo estimado" id="supplier-cost-${index}">
-                                        </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-1">
                                             <button class="btn btn-sm btn-danger" onclick="removeSupplier(${index})">
                                                 <i class="bi bi-trash"></i>
                                             </button>
@@ -4840,32 +4837,19 @@ function getPhaseSuppliersCount(area, category) {
     return suppliers.length;
 }
 
+function getPhaseItemsActualCostValue(area, category) {
+    if (!currentProjectManager?.projectData?.items) return 0;
+    return currentProjectManager.projectData.items
+        .filter((item) => item.area === area && item.category === category)
+        .reduce((sum, item) => sum + (Number(item.totalActual) || 0), 0);
+}
+
 function getPhaseTotalCost(area, category) {
-    const phaseKey = `${category}_${area}`;
-    const suppliers = currentProjectManager.projectData.phaseSuppliers && 
-                    currentProjectManager.projectData.phaseSuppliers[phaseKey] ? 
-                    currentProjectManager.projectData.phaseSuppliers[phaseKey] : [];
-    
-    const totalCost = suppliers.reduce((sum, supplier) => {
-        const rawCost = String(supplier.cost ?? '');
-        const cost = parseFloat(rawCost.replace(/[^0-9.-]/g, '')) || 0;
-        return sum + cost;
-    }, 0);
-    
-    return formatCurrency(totalCost);
+    return formatCurrency(getPhaseItemsActualCostValue(area, category));
 }
 
 function getPhaseTotalCostValue(area, category) {
-    const phaseKey = `${category}_${area}`;
-    const suppliers = currentProjectManager.projectData.phaseSuppliers &&
-                    currentProjectManager.projectData.phaseSuppliers[phaseKey] ?
-                    currentProjectManager.projectData.phaseSuppliers[phaseKey] : [];
-
-    return suppliers.reduce((sum, supplier) => {
-        const rawCost = String(supplier.cost ?? '');
-        const cost = parseFloat(rawCost.replace(/[^0-9.-]/g, '')) || 0;
-        return sum + cost;
-    }, 0);
+    return getPhaseItemsActualCostValue(area, category);
 }
 
 function getPhaseBudget(areaItems) {
@@ -4914,19 +4898,16 @@ function selectExistingSupplier(supplierId) {
         newSupplier.innerHTML = `
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <input type="text" class="form-control form-control-sm" value="${supplier.name}" placeholder="Nombre del proveedor" id="supplier-name-${supplierCount}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <input type="text" class="form-control form-control-sm" value="${supplier.type}" placeholder="Tipo de servicio" id="supplier-type-${supplierCount}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <input type="text" class="form-control form-control-sm" value="${supplier.phone}" placeholder="Teléfono" id="supplier-phone-${supplierCount}">
                     </div>
-                    <div class="col-md-2">
-                        <input type="text" class="form-control form-control-sm" value="${supplier.cost || ''}" placeholder="Costo estimado" id="supplier-cost-${supplierCount}">
-                    </div>
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <button class="btn btn-sm btn-danger" onclick="removeSupplier(${supplierCount})">
                             <i class="bi bi-trash"></i>
                         </button>
@@ -4978,15 +4959,9 @@ function addNewSupplier() {
                     </div>
                 </div>
                 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label style="color: #d4af37;">Email</label>
-                        <input type="email" class="form-control" id="new-supplier-email" placeholder="Ej: contacto@proveedor.com">
-                    </div>
-                    <div class="col-md-6">
-                        <label style="color: #d4af37;">Costo Promedio</label>
-                        <input type="text" class="form-control" id="new-supplier-cost" placeholder="Ej: $2,500">
-                    </div>
+                <div class="mb-3">
+                    <label style="color: #d4af37;">Email</label>
+                    <input type="email" class="form-control" id="new-supplier-email" placeholder="Ej: contacto@proveedor.com">
                 </div>
                 
                 <div class="mb-3">
@@ -5014,7 +4989,6 @@ function saveNewGlobalSupplier() {
     const type = document.getElementById('new-supplier-type').value.trim();
     const phone = document.getElementById('new-supplier-phone').value.trim();
     const email = document.getElementById('new-supplier-email').value.trim();
-    const cost = document.getElementById('new-supplier-cost').value.trim();
     const notes = document.getElementById('new-supplier-notes').value.trim();
     
     if (!name || !type) {
@@ -5029,7 +5003,6 @@ function saveNewGlobalSupplier() {
         type: type,
         phone: phone,
         email: email,
-        cost: cost,
         notes: notes,
         created: new Date().toISOString()
     };
@@ -5064,19 +5037,16 @@ function addSupplier() {
     newSupplier.innerHTML = `
         <div class="card-body">
             <div class="row">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <input type="text" class="form-control form-control-sm" placeholder="Nombre del proveedor" id="supplier-name-${supplierCount}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <input type="text" class="form-control form-control-sm" placeholder="Tipo de servicio" id="supplier-type-${supplierCount}">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <input type="text" class="form-control form-control-sm" placeholder="Teléfono" id="supplier-phone-${supplierCount}">
                 </div>
-                <div class="col-md-2">
-                    <input type="text" class="form-control form-control-sm" placeholder="Costo estimado" id="supplier-cost-${supplierCount}">
-                </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <button class="btn btn-sm btn-danger" onclick="removeSupplier(${supplierCount})">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -5106,16 +5076,13 @@ function savePhaseSuppliers(area, category) {
         const nameInput = supplierElement.querySelector('input[id^="supplier-name-"]');
         const typeInput = supplierElement.querySelector('input[id^="supplier-type-"]');
         const phoneInput = supplierElement.querySelector('input[id^="supplier-phone-"]');
-        const costInput = supplierElement.querySelector('input[id^="supplier-cost-"]');
-
         const supplierData = {
             name: (nameInput?.value || '').trim(),
             type: (typeInput?.value || '').trim(),
-            phone: (phoneInput?.value || '').trim(),
-            cost: (costInput?.value || '').trim()
+            phone: (phoneInput?.value || '').trim()
         };
 
-        if (!supplierData.name && !supplierData.type && !supplierData.phone && !supplierData.cost) {
+        if (!supplierData.name && !supplierData.type && !supplierData.phone) {
             return;
         }
         
@@ -5187,17 +5154,10 @@ function updatePhaseSummary(area, category, suppliers, durationValue, durationUn
         suppliersElement.textContent = suppliers.length;
     }
     
-    // Calculate total cost
-    const totalCost = suppliers.reduce((sum, supplier) => {
-        const rawCost = String(supplier.cost ?? '');
-        const cost = parseFloat(rawCost.replace(/[^0-9.-]/g, '')) || 0;
-        return sum + cost;
-    }, 0);
-    
     // Update total cost
     const costElement = document.getElementById('summary-cost');
     if (costElement) {
-        costElement.textContent = formatCurrency(totalCost);
+        costElement.textContent = formatCurrency(getPhaseItemsActualCostValue(area, category));
     }
 }
 
@@ -5217,7 +5177,6 @@ function addToGlobalSuppliers(supplierData) {
             type: supplierData.type,
             phone: supplierData.phone,
             email: '',
-            cost: supplierData.cost,
             notes: '',
             created: new Date().toISOString()
         };
