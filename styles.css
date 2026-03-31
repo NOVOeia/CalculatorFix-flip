@@ -526,6 +526,138 @@ h6 {
     transition: all 0.3s ease;
 }
 
+.student-analysis-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.student-analysis-title {
+    color: var(--accent-gold);
+    font-weight: 700;
+}
+
+.student-flow-grid {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) auto minmax(180px, 1fr);
+    gap: 0.6rem;
+    align-items: stretch;
+}
+
+.student-flow-item {
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    padding: 0.8rem;
+}
+
+.student-flow-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #d4af37;
+    font-weight: 700;
+}
+
+.student-flow-value {
+    font-size: 1.35rem;
+    line-height: 1.2;
+    font-weight: 800;
+    color: #ffffff;
+    margin-top: 0.2rem;
+}
+
+.student-flow-note {
+    margin-top: 0.3rem;
+    color: #adb5bd;
+    font-size: 0.8rem;
+}
+
+.student-flow-arrow {
+    display: grid;
+    place-items: center;
+    color: rgba(212, 175, 55, 0.7);
+    font-size: 1rem;
+}
+
+.student-signal-item {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.student-signal-targets {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.student-signal-target-chip {
+    font-size: 0.75rem;
+    color: #dbe4f0;
+    border: 1px dashed rgba(212, 175, 55, 0.35);
+    background: rgba(212, 175, 55, 0.08);
+    border-radius: 999px;
+    padding: 0.2rem 0.55rem;
+    white-space: nowrap;
+}
+
+.student-kpi-item {
+    border-color: rgba(0, 168, 255, 0.25);
+    background: linear-gradient(135deg, rgba(0, 168, 255, 0.08), rgba(255, 255, 255, 0.02));
+}
+
+.student-signal-badge {
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.student-signal-badge.good {
+    background: rgba(40, 167, 69, 0.25);
+    color: #8ef0a8;
+    border-color: rgba(40, 167, 69, 0.3);
+}
+
+.student-signal-badge.warn {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffe48a;
+    border-color: rgba(255, 193, 7, 0.3);
+}
+
+.student-signal-badge.risk {
+    background: rgba(220, 53, 69, 0.2);
+    color: #ff9da8;
+    border-color: rgba(220, 53, 69, 0.3);
+}
+
+@media (max-width: 992px) {
+    .student-flow-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .student-flow-arrow {
+        transform: rotate(90deg);
+        min-height: 16px;
+    }
+
+    .student-signal-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .student-signal-targets {
+        width: 100%;
+    }
+}
+
 /* Value Update Animation */
 .value-update {
     animation: valueHighlight 0.6s ease-out;

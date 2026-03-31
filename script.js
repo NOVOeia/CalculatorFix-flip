@@ -678,6 +678,28 @@ function evaluateDeal(calculation) {
     }
     score += riskScore;
 
+    // 5. User minimum targets alignment (adjustment layer)
+    const minRoiTarget = Number(calculation.profitMinPercent) || 0;
+    const minProfitTarget = Number(calculation.profitMinAmount) || 0;
+    const meetsRoiTarget = roi >= minRoiTarget;
+    const meetsProfitTarget = profit >= minProfitTarget;
+
+    if (meetsRoiTarget && meetsProfitTarget) {
+        score += 5;
+        factors.push('Cumple minimos de ROI y ganancia');
+    } else if (!meetsRoiTarget && !meetsProfitTarget) {
+        score -= 10;
+        factors.push('No cumple minimos de ROI y ganancia');
+    } else if (!meetsRoiTarget) {
+        score -= 6;
+        factors.push('No cumple ROI minimo objetivo');
+    } else if (!meetsProfitTarget) {
+        score -= 6;
+        factors.push('No cumple ganancia minima objetivo');
+    }
+
+    score = Math.max(0, Math.min(100, score));
+
     // Determine level based on score
     let level, levelText, recommendation, icon;
     
@@ -812,11 +834,11 @@ function updateDealEvaluator(evaluation) {
 
         const roiElement = document.getElementById('detail-roi');
         const profitElement = document.getElementById('detail-profit');
-        const riskElement = document.getElementById('detail-risk');
+        const projectMonthsElement = document.getElementById('detail-project-months');
 
         if (roiElement) roiElement.textContent = formatPercentage(evaluation.roi);
         if (profitElement) profitElement.textContent = formatCurrency(evaluation.profit);
-        if (riskElement) riskElement.textContent = evaluation.risk;
+        if (projectMonthsElement) projectMonthsElement.textContent = String(currentCalculation?.projectMonths || 0);
 
         const iconElement = document.getElementById('recommendation-icon');
         const textElement = document.getElementById('recommendation-text');
@@ -1127,6 +1149,11 @@ function calculateUnderwriting() {
         let calculatedHmlLoanAmount = hmlLoanAmount;
         let calculatedHmlLoanPercent = hmlLoanPercent;
 
+        const downPaymentAmountEl = document.getElementById('down-payment-amount');
+        const downPaymentPercentEl = document.getElementById('down-payment-percent');
+        const isEditingDownAmount = document.activeElement === downPaymentAmountEl || lastModifiedField === 'down-payment-amount';
+        const isEditingDownPercent = document.activeElement === downPaymentPercentEl || lastModifiedField === 'down-payment-percent';
+
         // Down Payment calculations
         if (downPaymentAmount > 0 && purchasePrice > 0 && downPaymentPercent === 0) {
             calculatedDownPaymentPercent = Math.round((downPaymentAmount / purchasePrice) * 100 * 10) / 10;
@@ -1135,11 +1162,14 @@ function calculateUnderwriting() {
         } else if (downPaymentAmount > 0 && downPaymentPercent > 0 && purchasePrice > 0) {
             const expectedPercent = Math.round((downPaymentAmount / purchasePrice) * 100 * 10) / 10;
             const expectedAmount = (purchasePrice * downPaymentPercent) / 100;
-            
-            if (lastModifiedField === 'down-payment-amount') {
-                calculatedDownPaymentPercent = expectedPercent;
-            } else if (lastModifiedField === 'down-payment-percent') {
+
+            // Keep both fields always synchronized.
+            // If percent field is the one being edited, derive amount from it.
+            // Otherwise (or when editing neither), derive percent from amount.
+            if (isEditingDownPercent && !isEditingDownAmount) {
                 calculatedDownPaymentAmount = expectedAmount;
+            } else {
+                calculatedDownPaymentPercent = expectedPercent;
             }
         }
 
@@ -1386,6 +1416,7 @@ function updateUI() {
         updateField('projection', formatCurrency(currentCalculation.profit));
         updateField('roi', formatPercentage(currentCalculation.roi));
         updateField('coc', formatPercentage(currentCalculation.cashOnCash));
+        renderStudentAnalysisTable(currentCalculation);
 
         // Deal Evaluation with Thermometer
         const evaluation = evaluateDeal(currentCalculation);
@@ -1411,6 +1442,113 @@ function updateUI() {
     } catch (error) {
         console.error('Error updating UI:', error);
     }
+}
+
+function renderStudentAnalysisTable(calc) {
+    const panel = document.getElementById('student-analysis-body');
+    if (!panel || !calc) return;
+
+    const invested = Number(calc.tpcPlusCost) || 0;
+    const netSale = Number(calc.netSalePrice) || 0;
+    const profit = Number(calc.profit) || 0;
+    const roi = Number(calc.roi) || 0;
+    const arv = Number(calc.arv) || 0;
+    const months = Math.max(1, Number(calc.projectMonths) || 1);
+    const investVsArv = calc.arv > 0 ? (invested / calc.arv) * 100 : 0;
+    const minRoi = Number(calc.profitMinPercent) || 0;
+    const minProfit = Number(calc.profitMinAmount) || 0;
+    const breakEvenArv = (() => {
+        const commissionRate = (Number(calc.reCommissions) || 0) / 100;
+        const resaleClosing = Number(calc.resaleClosingCosts) || 0;
+        const denominator = 1 - commissionRate;
+        if (denominator <= 0) return 0;
+        return (invested + resaleClosing) / denominator;
+    })();
+    const safetyMargin = arv > 0 ? ((arv - breakEvenArv) / arv) * 100 : 0;
+    const monthlyProfit = profit / months;
+
+    let signalText = 'Sin datos';
+    let signalClass = 'warn';
+    let signalNote = 'Carga datos para evaluar';
+
+    if (invested > 0 || netSale > 0 || profit !== 0) {
+        const meetsRoi = roi >= minRoi;
+        const meetsProfit = profit >= minProfit;
+
+        if (meetsRoi && meetsProfit) {
+            if (roi >= 20 && investVsArv <= 75) {
+                signalText = 'Cumple y se ve fuerte';
+                signalClass = 'good';
+                signalNote = 'Cumple tus minimos y ademas muestra buen margen.';
+            } else {
+                signalText = 'Cumple minimos';
+                signalClass = 'good';
+                signalNote = 'Cumple ROI y ganancia minima definidos por ti.';
+            }
+        } else if (!meetsRoi && !meetsProfit) {
+            signalText = 'No cumple minimos';
+            signalClass = 'risk';
+            signalNote = `No alcanza ROI minimo (${formatPercentage(minRoi, 2)}) ni ganancia minima (${formatCurrency(minProfit)}).`;
+        } else if (!meetsRoi) {
+            signalText = 'ROI por debajo';
+            signalClass = 'warn';
+            signalNote = `ROI actual ${formatPercentage(roi, 2)} vs minimo ${formatPercentage(minRoi, 2)}.`;
+        } else if (!meetsProfit) {
+            signalText = 'Ganancia por debajo';
+            signalClass = 'warn';
+            signalNote = `Ganancia actual ${formatCurrency(profit)} vs minimo ${formatCurrency(minProfit)}.`;
+        } else {
+            signalText = 'Riesgo alto';
+            signalClass = 'risk';
+            signalNote = 'Revisa costos, precio de compra y ARV para mejorar el deal.';
+        }
+    }
+
+    panel.innerHTML = `
+        <div class="student-flow-item">
+            <div class="student-flow-label">Inviertes</div>
+            <div class="student-flow-value">${formatCurrency(invested)}</div>
+            <div class="student-flow-note">Compra + rehab + financiamiento + venta.</div>
+        </div>
+        <div class="student-flow-arrow"><i class="bi bi-arrow-right"></i></div>
+        <div class="student-flow-item">
+            <div class="student-flow-label">Vendes (neto)</div>
+            <div class="student-flow-value">${formatCurrency(netSale)}</div>
+            <div class="student-flow-note">ARV menos comisiones y cierre de venta.</div>
+        </div>
+        <div class="student-flow-arrow"><i class="bi bi-arrow-right"></i></div>
+        <div class="student-flow-item">
+            <div class="student-flow-label">Resultado</div>
+            <div class="student-flow-value">${formatCurrency(profit)}</div>
+            <div class="student-flow-note">ROI ${formatPercentage(roi, 2)} · Inversion/ARV ${formatPercentage(investVsArv, 1)}.</div>
+        </div>
+        <div class="student-flow-item student-signal-item">
+            <div>
+                <div class="student-flow-label">Senal rapida</div>
+                <div class="student-flow-note">${signalNote}</div>
+            </div>
+            <div class="student-signal-targets">
+                <span class="student-signal-target-chip">Min ROI: ${formatPercentage(minRoi, 2)}</span>
+                <span class="student-signal-target-chip">Min Profit: ${formatCurrency(minProfit)}</span>
+            </div>
+            <span class="student-signal-badge ${signalClass}">${signalText}</span>
+        </div>
+        <div class="student-flow-item student-kpi-item">
+            <div class="student-flow-label">Break-even ARV</div>
+            <div class="student-flow-value">${formatCurrency(breakEvenArv)}</div>
+            <div class="student-flow-note">Precio minimo de venta para no perder dinero.</div>
+        </div>
+        <div class="student-flow-item student-kpi-item">
+            <div class="student-flow-label">Margen de seguridad</div>
+            <div class="student-flow-value">${formatPercentage(safetyMargin, 2)}</div>
+            <div class="student-flow-note">Cuanto puede caer el ARV antes de entrar en perdida.</div>
+        </div>
+        <div class="student-flow-item student-kpi-item">
+            <div class="student-flow-label">Utilidad mensual</div>
+            <div class="student-flow-value">${formatCurrency(monthlyProfit)}</div>
+            <div class="student-flow-note">Ganancia estimada dividida entre ${months} mes(es).</div>
+        </div>
+    `;
 }
 
 // Show notification function
@@ -3076,19 +3214,15 @@ function renderBudgetControl() {
                         <div class="row">
                             <div class="col-12">
                                 <div class="progress mb-2" style="height: 25px;">
-                                    <div class="progress-bar bg-warning" style="width: ${Math.min((totalEstimated / dealRepairBudget) * 100, 100)}%">
+                                    <div class="progress-bar bg-warning text-black" style="width: ${Math.min((totalEstimated / dealRepairBudget) * 100, 100)}%">
                                         Presupuesto PM ${Math.round((totalEstimated / dealRepairBudget) * 100)}%
                                     </div>
-                                    <div class="progress-bar bg-info" style="width: ${Math.min((totalActual / dealRepairBudget) * 100, 100)}%">
+                                    <div class="progress-bar bg-info text-black" style="width: ${Math.min((totalActual / dealRepairBudget) * 100, 100)}%">
                                         Gastado ${Math.round((totalActual / dealRepairBudget) * 100)}%
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-between">
-                                    <small class="text-muted">
-                                        <span class="badge ${budgetVariancePercent >= 0 ? 'bg-success' : 'bg-danger'}">
-                                            Variación: ${budgetVariancePercent >= 0 ? '+' : ''}${budgetVariancePercent}%
-                                        </span>
-                                    </small>
+                                    
                                     <small class="text-muted">
                                         Total Deal: ${formatCurrency(dealRepairBudget)} | Utilizado: ${Math.round((totalActual / dealRepairBudget) * 100)}%
                                     </small>
@@ -3116,10 +3250,10 @@ function renderBudgetControl() {
                             </div>
                         </div>
                         <div class="progress mb-2" style="height: 20px;">
-                            <div class="progress-bar bg-warning" style="width: ${(interiorEstimated / totalEstimated * 100)}%">
+                            <div class="progress-bar bg-warning text-black" style="width: ${(interiorEstimated / totalEstimated * 100)}%">
                                 Interior ${Math.round(interiorEstimated / totalEstimated * 100)}%
                             </div>
-                            <div class="progress-bar bg-info" style="width: ${(exteriorEstimated / totalEstimated * 100)}%">
+                            <div class="progress-bar bg-info text-black" style="width: ${(exteriorEstimated / totalEstimated * 100)}%">
                                 Exterior ${Math.round(exteriorEstimated / totalEstimated * 100)}%
                             </div>
                         </div>
