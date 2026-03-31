@@ -1416,11 +1416,11 @@ function updateUI() {
         updateField('projection', formatCurrency(currentCalculation.profit));
         updateField('roi', formatPercentage(currentCalculation.roi));
         updateField('coc', formatPercentage(currentCalculation.cashOnCash));
-        renderStudentAnalysisTable(currentCalculation);
 
         // Deal Evaluation with Thermometer
         const evaluation = evaluateDeal(currentCalculation);
         updateDealEvaluator(evaluation);
+        renderStudentAnalysisTable(currentCalculation, evaluation);
 
         // Results Panel
         updateField('result-total-investment', formatCurrency(currentCalculation.tpcPlusCost));
@@ -1444,7 +1444,7 @@ function updateUI() {
     }
 }
 
-function renderStudentAnalysisTable(calc) {
+function renderStudentAnalysisTable(calc, evaluation) {
     const panel = document.getElementById('student-analysis-body');
     if (!panel || !calc) return;
 
@@ -1470,12 +1470,16 @@ function renderStudentAnalysisTable(calc) {
     let signalText = 'Sin datos';
     let signalClass = 'warn';
     let signalNote = 'Carga datos para evaluar';
+    let confidenceText = 'Sin validar';
+    let confidenceClass = 'warn';
 
     if (invested > 0 || netSale > 0 || profit !== 0) {
         const meetsRoi = roi >= minRoi;
         const meetsProfit = profit >= minProfit;
 
         if (meetsRoi && meetsProfit) {
+            confidenceText = 'Cumple minimos';
+            confidenceClass = 'good';
             if (roi >= 20 && investVsArv <= 75) {
                 signalText = 'Cumple y se ve fuerte';
                 signalClass = 'good';
@@ -1486,14 +1490,20 @@ function renderStudentAnalysisTable(calc) {
                 signalNote = 'Cumple ROI y ganancia minima definidos por ti.';
             }
         } else if (!meetsRoi && !meetsProfit) {
+            confidenceText = 'No cumple minimos';
+            confidenceClass = 'risk';
             signalText = 'No cumple minimos';
             signalClass = 'risk';
             signalNote = `No alcanza ROI minimo (${formatPercentage(minRoi, 2)}) ni ganancia minima (${formatCurrency(minProfit)}).`;
         } else if (!meetsRoi) {
+            confidenceText = 'ROI bajo minimo';
+            confidenceClass = 'warn';
             signalText = 'ROI por debajo';
             signalClass = 'warn';
             signalNote = `ROI actual ${formatPercentage(roi, 2)} vs minimo ${formatPercentage(minRoi, 2)}.`;
         } else if (!meetsProfit) {
+            confidenceText = 'Profit bajo minimo';
+            confidenceClass = 'warn';
             signalText = 'Ganancia por debajo';
             signalClass = 'warn';
             signalNote = `Ganancia actual ${formatCurrency(profit)} vs minimo ${formatCurrency(minProfit)}.`;
@@ -1504,21 +1514,43 @@ function renderStudentAnalysisTable(calc) {
         }
     }
 
+    const levelText = evaluation?.levelText || 'Sin datos';
+    const score = Number(evaluation?.score) || 0;
+    const insightItems = (evaluation?.factors || []).slice(0, 3);
+    const insightHtml = insightItems.length
+        ? insightItems.map((item) => `<li><i class="bi bi-lightning-charge-fill"></i><span>${item}</span></li>`).join('')
+        : '<li><i class="bi bi-lightning-charge-fill"></i><span>Ingresa datos para generar insights.</span></li>';
+
     panel.innerHTML = `
-        <div class="student-flow-item">
-            <div class="student-flow-label">Inviertes</div>
+        <div class="exec-hud">
+            <div class="exec-hud-item">
+                <div class="exec-hud-label">Score</div>
+                <div class="exec-hud-value">${score}</div>
+            </div>
+            <div class="exec-hud-item">
+                <div class="exec-hud-label">Estado</div>
+                <div class="exec-hud-value">${levelText}</div>
+            </div>
+            <div class="exec-hud-item">
+                <div class="exec-hud-label">Confianza</div>
+                <div class="exec-hud-value"><span class="student-signal-badge ${confidenceClass}">${confidenceText}</span></div>
+            </div>
+        </div>
+
+        <div class="student-flow-item exec-step">
+            <div class="student-flow-label">Paso 1 · Inviertes</div>
             <div class="student-flow-value">${formatCurrency(invested)}</div>
             <div class="student-flow-note">Compra + rehab + financiamiento + venta.</div>
         </div>
         <div class="student-flow-arrow"><i class="bi bi-arrow-right"></i></div>
-        <div class="student-flow-item">
-            <div class="student-flow-label">Vendes (neto)</div>
+        <div class="student-flow-item exec-step">
+            <div class="student-flow-label">Paso 2 · Vendes (neto)</div>
             <div class="student-flow-value">${formatCurrency(netSale)}</div>
             <div class="student-flow-note">ARV menos comisiones y cierre de venta.</div>
         </div>
         <div class="student-flow-arrow"><i class="bi bi-arrow-right"></i></div>
-        <div class="student-flow-item">
-            <div class="student-flow-label">Resultado</div>
+        <div class="student-flow-item exec-step">
+            <div class="student-flow-label">Paso 3 · Resultado</div>
             <div class="student-flow-value">${formatCurrency(profit)}</div>
             <div class="student-flow-note">ROI ${formatPercentage(roi, 2)} · Inversion/ARV ${formatPercentage(investVsArv, 1)}.</div>
         </div>
@@ -1547,6 +1579,10 @@ function renderStudentAnalysisTable(calc) {
             <div class="student-flow-label">Utilidad mensual</div>
             <div class="student-flow-value">${formatCurrency(monthlyProfit)}</div>
             <div class="student-flow-note">Ganancia estimada dividida entre ${months} mes(es).</div>
+        </div>
+        <div class="student-flow-item exec-insight-item">
+            <div class="student-flow-label">Por que este resultado</div>
+            <ul class="exec-insight-list">${insightHtml}</ul>
         </div>
     `;
 }
