@@ -1539,18 +1539,21 @@ function renderStudentAnalysisTable(calc, evaluation) {
 
         <div class="student-flow-item exec-step">
             <div class="student-flow-label">Paso 1 · Inviertes</div>
-            <div class="student-flow-value">${formatCurrency(invested)}</div>
-            <div class="student-flow-note">Compra + rehab + financiamiento + venta.</div>
+            <div class="student-flow-value">${formatCurrency(Number(calc.purchasePrice) || 0)}</div>
+            <div class="student-flow-note">Precio de compra inicial.</div>
         </div>
-        <div class="student-flow-arrow"><i class="bi bi-arrow-right"></i></div>
         <div class="student-flow-item exec-step">
-            <div class="student-flow-label">Paso 2 · Vendes (neto)</div>
+            <div class="student-flow-label">Paso 2 · Arreglas / Remodelas</div>
+            <div class="student-flow-value">${formatCurrency(Number(calc.rehabBudget) || 0)}</div>
+            <div class="student-flow-note">Presupuesto de renovacion (rehab).</div>
+        </div>
+        <div class="student-flow-item exec-step">
+            <div class="student-flow-label">Paso 3 · Vendes</div>
             <div class="student-flow-value">${formatCurrency(netSale)}</div>
-            <div class="student-flow-note">ARV menos comisiones y cierre de venta.</div>
+            <div class="student-flow-note">Venta neta despues de costos.</div>
         </div>
-        <div class="student-flow-arrow"><i class="bi bi-arrow-right"></i></div>
         <div class="student-flow-item exec-step">
-            <div class="student-flow-label">Paso 3 · Resultado</div>
+            <div class="student-flow-label">Paso 4 · Resultado</div>
             <div class="student-flow-value">${formatCurrency(profit)}</div>
             <div class="student-flow-note">ROI ${formatPercentage(roi, 2)} · Inversion/ARV ${formatPercentage(investVsArv, 1)}.</div>
         </div>

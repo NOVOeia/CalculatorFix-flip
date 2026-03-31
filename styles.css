@@ -540,7 +540,7 @@ h6 {
 
 .student-flow-grid {
     display: grid;
-    grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr) auto minmax(180px, 1fr);
+    grid-template-columns: repeat(4, minmax(170px, 1fr));
     gap: 0.6rem;
     align-items: stretch;
 }
@@ -608,10 +608,7 @@ h6 {
 }
 
 .student-flow-arrow {
-    display: grid;
-    place-items: center;
-    color: rgba(212, 175, 55, 0.7);
-    font-size: 1rem;
+    display: none;
 }
 
 .student-signal-item {
